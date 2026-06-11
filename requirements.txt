@@ -1,0 +1,6 @@
+requests>=2.32.0
+google-api-python-client>=2.140.0
+google-auth>=2.34.0
+gspread>=6.1.0
+python-dotenv>=1.0.1
+discord.py>=2.4.0
