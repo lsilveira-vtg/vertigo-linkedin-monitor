@@ -38,3 +38,33 @@ def set_header(tab: str, header: list[str]) -> None:
     ws = open_sheet().worksheet(tab)
     if not ws.row_values(1):
         ws.update("A1", [header])
+        format_tab(ws, num_cols=len(header))
+
+
+HEADER_FORMAT = {
+    "backgroundColor": {"red": 0.13, "green": 0.13, "blue": 0.13},
+    "textFormat": {
+        "foregroundColor": {"red": 1, "green": 1, "blue": 1},
+        "bold": True,
+    },
+    "horizontalAlignment": "CENTER",
+}
+
+CURRENCY_FORMAT = {"numberFormat": {"type": "CURRENCY", "pattern": 'R$ #,##0.00'}}
+PERCENT_FORMAT = {"numberFormat": {"type": "PERCENT", "pattern": "0.00%"}}
+
+
+def format_tab(ws: gspread.Worksheet, num_cols: int) -> None:
+    """Aplica a formatacao visual padrao: cabecalho escuro, linha congelada,
+    moeda nas colunas de R$ e percentual nas colunas de taxa."""
+    last_col = chr(ord("A") + num_cols - 1)
+    ws.format(f"A1:{last_col}1", HEADER_FORMAT)
+    ws.freeze(rows=1)
+
+    header = ws.row_values(1)
+    for idx, name in enumerate(header):
+        col = chr(ord("A") + idx)
+        if "R$" in name or "CPL" in name or "Invest" in name:
+            ws.format(f"{col}2:{col}1000", CURRENCY_FORMAT)
+        elif "%" in name or "rate" in name.lower() or "CTR" in name:
+            ws.format(f"{col}2:{col}1000", PERCENT_FORMAT)
