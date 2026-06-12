@@ -20,13 +20,17 @@ def main() -> None:
     campaign_rows = []
     for row in analytics:
         pivot = row.get("pivotValues", [""])[0]
+        invest = float(row.get("costInLocalCurrency", 0) or 0)
+        leads = int(row.get("oneClickLeads", 0) or 0)
+        cpl = round(invest / leads, 2) if leads else ""
         campaign_rows.append([
             yesterday.isoformat(),
             names.get(pivot, pivot),
-            row.get("costInLocalCurrency", 0),
+            invest,
+            leads,
+            cpl,
             row.get("impressions", 0),
             row.get("clicks", 0),
-            row.get("oneClickLeads", 0),
             row.get("reactions", 0),
             row.get("comments", 0),
             row.get("shares", 0),
@@ -47,8 +51,8 @@ def main() -> None:
 
     sheets_client.ensure_tabs()
     sheets_client.set_header("Campanhas", [
-        "Data", "Campanha", "Invest (R$)", "Impressões", "Cliques",
-        "Leads", "Reações", "Comentários", "Compartilhamentos",
+        "Data", "Campanha", "Invest (R$)", "Leads", "CPL (R$)",
+        "Impressões", "Cliques", "Reações", "Comentários", "Compartilhamentos",
     ])
     sheets_client.set_header("Anúncios", [
         "Data", "Anúncio", "Invest (R$)", "Impressões", "Cliques",

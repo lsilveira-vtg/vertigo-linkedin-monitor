@@ -8,15 +8,15 @@ sys.stdout.reconfigure(encoding="utf-8")
 from src import sheets_client
 
 HEADERS = {
-    "Campanhas": ["Data", "Campanha", "Invest (R$)", "Impressões", "Cliques",
-                  "Leads", "Reações", "Comentários", "Compartilhamentos"],
+    "Campanhas": ["Data", "Campanha", "Invest (R$)", "Leads", "CPL (R$)",
+                  "Impressões", "Cliques", "Reações", "Comentários", "Compartilhamentos"],
     "Anúncios": ["Data", "Anúncio", "Invest (R$)", "Impressões", "Cliques",
                  "Reações", "Comentários", "Compartilhamentos"],
     "Budget Mensal": ["Mês", "Grupo", "Gasto (R$)", "Limite (R$)", "Consumo %"],
-    "Histórico Semanal": ["Semana", "Campanha", "Invest (R$)", "Leads",
-                          "CPL (R$)", "Impressões", "CTR %"],
-    "Histórico Mensal": ["Mês", "Campanha", "Invest (R$)", "Leads",
-                         "CPL (R$)", "Impressões", "CTR %"],
+    "Histórico Semanal": ["Período (início)", "Período (fim)", "Campanha", "Invest (R$)",
+                          "Leads", "CPL (R$)", "Impressões", "CTR %"],
+    "Histórico Mensal": ["Período (início)", "Período (fim)", "Campanha", "Invest (R$)",
+                         "Leads", "CPL (R$)", "Impressões", "CTR %"],
     "Recomendações": ["Data", "Campanha", "Ação", "Motivo", "Status",
                       "Aprovado por", "Executado em"],
 }
