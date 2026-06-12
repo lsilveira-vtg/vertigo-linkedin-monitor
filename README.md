@@ -76,6 +76,18 @@ Etapas com dados reais ficam bloqueadas até a aprovação.
 ### ✅ Etapa 4 — Estrutura do código *(11/06/2026)*
 Criados os módulos de coleta, planilha, e-mail, reports e recomendações, além dos workflows de agendamento no GitHub Actions.
 
+### ✅ Etapa 5 — Planilha Google Sheets *(12/06/2026)*
+Planilha criada no Drive do time com 6 abas formatadas. Coluna de CPL automática e períodos início/fim nos históricos (ajustes da coordenação aplicados).
+
+### ✅ Etapa 6 — Service Account no Google Cloud *(12/06/2026)*
+Projeto `vertigo-linkedin-monitor` criado na organização vertigo.com.br, com Sheets API e Gmail API ativadas. Chave da Service Account cadastrada nos Secrets do GitHub e conexão com a planilha testada com sucesso.
+
+### ✅ Etapa 7 — Dashboard no Looker/Data Studio *(12/06/2026)*
+Relatório "Vertigo · Monitor LinkedIn Ads" conectado à planilha, com cartões de resumo (Invest, Leads, Impressões, Cliques), série temporal e tabela por campanha.
+
+### ✅ Etapa 8 — Bot do Discord *(12/06/2026)*
+Código do bot pronto (comandos /report, /pendentes, /aprovar, /rejeitar com lista de aprovadores). App criado no Discord Developer Portal, token nos Secrets e link de convite enviado à infra — aguardando autorização do admin.
+
 ---
 
 ## Próximas etapas
@@ -85,10 +97,14 @@ Acompanhe no [Project Board](https://github.com/users/lsilveira-vtg/projects/1).
 - [x] Criar app no LinkedIn Developers e configurar OAuth
 - [x] Solicitar acesso à LinkedIn Advertising API
 - [x] Estrutura do código e workflows de agendamento
-- [ ] Estruturar planilha Google Sheets
-- [ ] Criar Service Account no Google Cloud
-- [ ] Dashboard Looker Studio
-- [ ] Bot do Discord (comandos e aprovações)
+- [x] Estruturar planilha Google Sheets
+- [x] Criar Service Account no Google Cloud
+- [x] Dashboard Looker/Data Studio
+- [x] Bot do Discord — código e app prontos (aguardando admin autorizar no servidor)
+- [ ] Aprovação da LinkedIn Advertising API (aguardando LinkedIn)
+- [ ] Acesso à conta de anúncios 506583089 (aguardando Plico)
+- [ ] Delegação do Gmail para envio de e-mails (aguardando admin Workspace)
+- [ ] Definir aprovadores de ações (alinhamento com coordenação)
 - [ ] Preencher `CAMPAIGN_CONFIG` com os IDs reais das campanhas
 - [ ] Testar com dados reais
 - [ ] Documentar e entregar
