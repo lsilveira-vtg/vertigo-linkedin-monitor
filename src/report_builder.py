@@ -5,25 +5,21 @@ A classificacao de cada campanha (leads/branding/inmail, emoji, budget)
 fica em CAMPAIGN_CONFIG — ajustar quando as campanhas reais estiverem
 disponiveis apos a aprovacao da API.
 """
+import json
+import os
 from datetime import date
 
 from . import linkedin_client
 from .report import CampaignReport, format_report
 
-# Configuracao por campanha: id -> propriedades de exibicao.
-# Preencher com os IDs reais apos a aprovacao da API.
-CAMPAIGN_CONFIG: dict[str, dict] = {
-    # "123456": {"emoji": "📕", "type": "leads", "display": "Materiais Ricos · Financeiras [Vertigo]"},
-    # "234567": {"emoji": "🖨️", "type": "branding", "display": "Artigos do Bruno [Vertigo]",
-    #            "note": "campanha de branding/thought leadership"},
-}
+# Configuracao por campanha: id -> propriedades de exibicao (emoji, type, display, note, budget_cap).
+# Dados sensiveis NAO ficam no codigo: carregados do Secret CAMPAIGN_CONFIG_JSON.
+# Formato: {"123456": {"emoji": "...", "type": "leads", "display": "..."}}
+CAMPAIGN_CONFIG: dict[str, dict] = json.loads(os.getenv("CAMPAIGN_CONFIG_JSON", "{}"))
 
-# Limites de orcamento mensal por grupo
-MONTHLY_BUDGETS = {
-    "VeeCode": 1250.0,
-    "Vertigo": 1900.0,
-    "Talks": 250.0,
-}
+# Limites de orcamento mensal por grupo (dados sensiveis) — vem do Secret MONTHLY_BUDGETS_JSON.
+# Formato: {"Grupo": limite_em_reais}
+MONTHLY_BUDGETS: dict[str, float] = json.loads(os.getenv("MONTHLY_BUDGETS_JSON", "{}"))
 
 
 def _aggregate(rows: list[dict]) -> dict[str, dict]:
