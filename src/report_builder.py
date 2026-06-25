@@ -23,23 +23,28 @@ MONTHLY_BUDGETS: dict[str, float] = json.loads(os.getenv("MONTHLY_BUDGETS_JSON",
 
 
 def _aggregate(rows: list[dict]) -> dict[str, dict]:
-    """Soma metricas diarias por campanha."""
+    """Soma metricas diarias por campanha. A chave e o id numerico da campanha
+    (extraido do URN em pivotValues, ex: urn:li:sponsoredCampaign:123 -> 123)."""
     out: dict[str, dict] = {}
     for row in rows:
-        key = row.get("pivotValues", [""])[0]
+        pivot = row.get("pivotValues", [""])[0]
+        key = pivot.rsplit(":", 1)[-1]
         agg = out.setdefault(key, {})
         for metric in ("impressions", "clicks", "costInLocalCurrency", "oneClickLeads",
-                       "reactions", "comments", "shares", "sends", "opens"):
+                       "likes", "comments", "shares", "sends", "opens"):
             agg[metric] = agg.get(metric, 0) + float(row.get(metric, 0) or 0)
     return out
 
 
 def build_report_for_period(start: date, end: date) -> str:
     analytics = _aggregate(linkedin_client.get_analytics(start, end, pivot="CAMPAIGN"))
-    campaigns_meta = {c["id"]: c for c in linkedin_client.get_campaigns()}
+    campaigns_meta = {str(c["id"]): c for c in linkedin_client.get_campaigns()}
 
     reports: list[CampaignReport] = []
     for campaign_id, metrics in analytics.items():
+        # Se ha campanhas configuradas, o report mostra somente elas (na ordem do config).
+        if CAMPAIGN_CONFIG and str(campaign_id) not in CAMPAIGN_CONFIG:
+            continue
         cfg = CAMPAIGN_CONFIG.get(str(campaign_id), {})
         meta = campaigns_meta.get(campaign_id, {})
         ctype = cfg.get("type", "leads")
@@ -51,7 +56,7 @@ def build_report_for_period(start: date, end: date) -> str:
             invest=metrics.get("costInLocalCurrency", 0),
         )
         if ctype == "branding":
-            rep.reactions = int(metrics.get("reactions", 0))
+            rep.reactions = int(metrics.get("likes", 0))
             rep.comments = int(metrics.get("comments", 0))
             rep.shares = int(metrics.get("shares", 0))
             rep.impressions = int(metrics.get("impressions", 0))
