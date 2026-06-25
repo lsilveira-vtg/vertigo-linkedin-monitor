@@ -10,7 +10,7 @@ import requests
 from . import config
 
 BASE_URL = "https://api.linkedin.com/rest"
-API_VERSION = "202506"
+API_VERSION = "202606"
 
 
 def _headers() -> dict:
@@ -23,12 +23,22 @@ def _headers() -> dict:
 
 
 def get_campaigns() -> list[dict]:
-    """Lista campanhas da conta com status e budget."""
+    """Lista todas as campanhas da conta (com paginacao)."""
     url = f"{BASE_URL}/adAccounts/{config.LINKEDIN_ACCOUNT_ID}/adCampaigns"
-    params = {"q": "search", "search": "(status:(values:List(ACTIVE,PAUSED)))"}
-    resp = requests.get(url, headers=_headers(), params=params, timeout=30)
-    resp.raise_for_status()
-    return resp.json().get("elements", [])
+    campaigns: list[dict] = []
+    page_token = None
+    while True:
+        params = {"q": "search", "pageSize": 1000}
+        if page_token:
+            params["pageToken"] = page_token
+        resp = requests.get(url, headers=_headers(), params=params, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        campaigns.extend(data.get("elements", []))
+        page_token = data.get("metadata", {}).get("nextPageToken")
+        if not page_token:
+            break
+    return campaigns
 
 
 def get_analytics(start: date, end: date, pivot: str = "CAMPAIGN") -> list[dict]:
