@@ -52,11 +52,14 @@ HEADER_FORMAT = {
 
 CURRENCY_FORMAT = {"numberFormat": {"type": "CURRENCY", "pattern": 'R$ #,##0.00'}}
 PERCENT_FORMAT = {"numberFormat": {"type": "PERCENT", "pattern": "0.00%"}}
+PLAIN_FORMAT = {"numberFormat": {"type": "NUMBER", "pattern": "0"}}
 
 
 def format_tab(ws: gspread.Worksheet, num_cols: int) -> None:
     """Aplica a formatacao visual padrao: cabecalho escuro, linha congelada,
-    moeda nas colunas de R$ e percentual nas colunas de taxa."""
+    moeda nas colunas de R$, percentual nas de taxa, e numero simples nas demais.
+    As colunas nao-moeda sao explicitamente formatadas como numero para
+    sobrescrever qualquer formatacao antiga grudada (ex: apos reordenar colunas)."""
     last_col = chr(ord("A") + num_cols - 1)
     ws.format(f"A1:{last_col}1", HEADER_FORMAT)
     ws.freeze(rows=1)
@@ -64,7 +67,14 @@ def format_tab(ws: gspread.Worksheet, num_cols: int) -> None:
     header = ws.row_values(1)
     for idx, name in enumerate(header):
         col = chr(ord("A") + idx)
+        rng = f"{col}2:{col}1000"
         if "R$" in name or "CPL" in name or "Invest" in name:
-            ws.format(f"{col}2:{col}1000", CURRENCY_FORMAT)
+            ws.format(rng, CURRENCY_FORMAT)
         elif "%" in name or "rate" in name.lower() or "CTR" in name:
-            ws.format(f"{col}2:{col}1000", PERCENT_FORMAT)
+            ws.format(rng, PERCENT_FORMAT)
+        elif name in ("Data", "Campanha", "Anúncio", "Grupo", "Mês", "Período (início)",
+                      "Período (fim)", "Ação", "Motivo", "Status", "Aprovado por",
+                      "Executado em", "Semana"):
+            continue  # colunas de texto/data — nao mexe
+        else:
+            ws.format(rng, PLAIN_FORMAT)  # Leads, Impressões, Cliques, etc.

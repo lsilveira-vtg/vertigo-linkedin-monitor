@@ -15,7 +15,12 @@ def main() -> None:
     analytics = linkedin_client.get_analytics(yesterday, yesterday, pivot="CAMPAIGN")
     ad_analytics = linkedin_client.get_analytics(yesterday, yesterday, pivot="CREATIVE")
 
-    names = {c["id"]: c.get("name", str(c["id"])) for c in campaigns}
+    names = {str(c["id"]): c.get("name", str(c["id"])) for c in campaigns}
+
+    def _name(pivot_urn: str) -> str:
+        # pivotValues vem como "urn:li:sponsoredCampaign:296725553"; extrai o id numerico
+        cid = pivot_urn.rsplit(":", 1)[-1]
+        return names.get(cid, pivot_urn)
 
     campaign_rows = []
     for row in analytics:
@@ -25,7 +30,7 @@ def main() -> None:
         cpl = round(invest / leads, 2) if leads else ""
         campaign_rows.append([
             yesterday.isoformat(),
-            names.get(pivot, pivot),
+            _name(pivot),
             invest,
             leads,
             cpl,
