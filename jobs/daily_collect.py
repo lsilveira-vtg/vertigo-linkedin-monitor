@@ -36,20 +36,22 @@ def main() -> None:
             cpl,
             row.get("impressions", 0),
             row.get("clicks", 0),
-            row.get("reactions", 0),
+            row.get("likes", 0),
             row.get("comments", 0),
             row.get("shares", 0),
         ])
 
     ad_rows = []
     for row in ad_analytics:
+        creative_urn = row.get("pivotValues", [""])[0]
+        ad_id = creative_urn.rsplit(":", 1)[-1]   # urn:li:sponsoredCreative:123 -> 123
         ad_rows.append([
             yesterday.isoformat(),
-            row.get("pivotValues", [""])[0],
-            row.get("costInLocalCurrency", 0),
+            ad_id,
+            round(float(row.get("costInLocalCurrency", 0) or 0), 2),
             row.get("impressions", 0),
             row.get("clicks", 0),
-            row.get("reactions", 0),
+            row.get("likes", 0),
             row.get("comments", 0),
             row.get("shares", 0),
         ])
