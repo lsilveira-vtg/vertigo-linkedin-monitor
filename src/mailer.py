@@ -1,21 +1,15 @@
-"""Envio de e-mails via Gmail API usando a Service Account."""
-import base64
-import json
-from email.mime.text import MIMEText
+"""Envio de e-mails via SMTP do Gmail (Senha de App).
 
-from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
+Usa a conta GMAIL_SENDER autenticada por GMAIL_APP_PASSWORD (senha de app de
+16 caracteres gerada em myaccount.google.com). Nao depende de delegacao do admin.
+"""
+import smtplib
+from email.mime.text import MIMEText
 
 from . import config
 
-SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
-
-
-def _service():
-    info = json.loads(config.GOOGLE_SERVICE_ACCOUNT_JSON)
-    creds = Credentials.from_service_account_info(info, scopes=SCOPES)
-    delegated = creds.with_subject(config.GMAIL_SENDER)
-    return build("gmail", "v1", credentials=delegated)
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = 587
 
 
 def send_email(subject: str, body: str, recipients: list[str] | None = None) -> None:
@@ -24,5 +18,8 @@ def send_email(subject: str, body: str, recipients: list[str] | None = None) -> 
     msg["To"] = ", ".join(recipients)
     msg["From"] = config.GMAIL_SENDER
     msg["Subject"] = subject
-    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
-    _service().users().messages().send(userId="me", body={"raw": raw}).execute()
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        server.starttls()
+        server.login(config.GMAIL_SENDER, config.GMAIL_APP_PASSWORD)
+        server.sendmail(config.GMAIL_SENDER, recipients, msg.as_string())

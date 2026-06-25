@@ -17,6 +17,7 @@ GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "")
 
 # E-mail
 GMAIL_SENDER = os.getenv("GMAIL_SENDER", "")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
 REPORT_RECIPIENTS = [e.strip() for e in os.getenv("REPORT_RECIPIENTS", "").split(",") if e.strip()]
 APPROVED_APPROVERS = [e.strip() for e in os.getenv("APPROVED_APPROVERS", "").split(",") if e.strip()]
 
