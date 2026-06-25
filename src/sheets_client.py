@@ -72,9 +72,9 @@ def format_tab(ws: gspread.Worksheet, num_cols: int) -> None:
             ws.format(rng, CURRENCY_FORMAT)
         elif "%" in name or "rate" in name.lower() or "CTR" in name:
             ws.format(rng, PERCENT_FORMAT)
-        elif name in ("Data", "Campanha", "Anúncio", "Grupo", "Mês", "Período (início)",
-                      "Período (fim)", "Ação", "Motivo", "Status", "Aprovado por",
-                      "Executado em", "Semana"):
+        elif name in ("Data", "Campanha", "Anúncio", "Anúncio (ID)", "Link", "Grupo",
+                      "Mês", "Período (início)", "Período (fim)", "Ação", "Motivo",
+                      "Status", "Aprovado por", "Executado em", "Semana"):
             continue  # colunas de texto/data — nao mexe
         else:
             ws.format(rng, PLAIN_FORMAT)  # Leads, Impressões, Cliques, etc.

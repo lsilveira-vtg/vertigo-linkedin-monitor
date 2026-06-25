@@ -45,9 +45,22 @@ def main() -> None:
     for row in ad_analytics:
         creative_urn = row.get("pivotValues", [""])[0]
         ad_id = creative_urn.rsplit(":", 1)[-1]   # urn:li:sponsoredCreative:123 -> 123
+
+        # Enriquece com campanha-mae e link do anuncio (Opcao B — sem permissao extra)
+        campaign_name, link = "", ""
+        try:
+            creative = linkedin_client.get_creative(ad_id)
+            camp_urn = creative.get("campaign", "")
+            campaign_name = names.get(camp_urn.rsplit(":", 1)[-1], camp_urn)
+            link = linkedin_client.post_url(creative.get("content", {}).get("reference", ""))
+        except Exception as exc:  # nao interrompe a coleta se um criativo falhar
+            print(f"  aviso: nao resolvi o anuncio {ad_id}: {exc}")
+
         ad_rows.append([
             yesterday.isoformat(),
             ad_id,
+            campaign_name,
+            link,
             round(float(row.get("costInLocalCurrency", 0) or 0), 2),
             row.get("impressions", 0),
             row.get("clicks", 0),
@@ -62,7 +75,7 @@ def main() -> None:
         "Impressões", "Cliques", "Reações", "Comentários", "Compartilhamentos",
     ])
     sheets_client.set_header("Anúncios", [
-        "Data", "Anúncio", "Invest (R$)", "Impressões", "Cliques",
+        "Data", "Anúncio (ID)", "Campanha", "Link", "Invest (R$)", "Impressões", "Cliques",
         "Reações", "Comentários", "Compartilhamentos",
     ])
     if campaign_rows:

@@ -10,8 +10,8 @@ from src import sheets_client
 HEADERS = {
     "Campanhas": ["Data", "Campanha", "Invest (R$)", "Leads", "CPL (R$)",
                   "Impressões", "Cliques", "Reações", "Comentários", "Compartilhamentos"],
-    "Anúncios": ["Data", "Anúncio", "Invest (R$)", "Impressões", "Cliques",
-                 "Reações", "Comentários", "Compartilhamentos"],
+    "Anúncios": ["Data", "Anúncio (ID)", "Campanha", "Link", "Invest (R$)", "Impressões",
+                 "Cliques", "Reações", "Comentários", "Compartilhamentos"],
     "Budget Mensal": ["Mês", "Grupo", "Gasto (R$)", "Limite (R$)", "Consumo %"],
     "Histórico Semanal": ["Período (início)", "Período (fim)", "Campanha", "Invest (R$)",
                           "Leads", "CPL (R$)", "Impressões", "CTR %"],

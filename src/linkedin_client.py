@@ -49,6 +49,26 @@ ANALYTICS_FIELDS = [
 ]
 
 
+def get_creative(creative_id: str) -> dict:
+    """Busca um criativo (anuncio) por id. Retorna o dict da API.
+
+    Campos uteis: 'name' (geralmente vazio), 'campaign' (urn) e
+    'content'->'reference' (urn do post/share que da origem ao anuncio).
+    """
+    enc = f"urn%3Ali%3AsponsoredCreative%3A{creative_id}"
+    url = f"{BASE_URL}/adAccounts/{config.LINKEDIN_ACCOUNT_ID}/creatives/{enc}"
+    resp = requests.get(url, headers=_headers(), timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def post_url(share_urn: str) -> str:
+    """Monta a URL publica do post/anuncio a partir do urn (share ou ugcPost)."""
+    if not share_urn:
+        return ""
+    return f"https://www.linkedin.com/feed/update/{share_urn}"
+
+
 def get_analytics(start: date, end: date, pivot: str = "CAMPAIGN") -> list[dict]:
     """Metricas (impressoes, cliques, gasto, leads) por campanha ou anuncio.
 
