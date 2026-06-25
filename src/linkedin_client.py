@@ -41,25 +41,36 @@ def get_campaigns() -> list[dict]:
     return campaigns
 
 
+# Metricas pedidas no relatorio (campos validos da AdAnalytics API).
+ANALYTICS_FIELDS = [
+    "impressions", "clicks", "costInLocalCurrency", "oneClickLeads",
+    "externalWebsiteConversions", "likes", "comments", "shares",
+    "follows", "landingPageClicks", "dateRange", "pivotValues",
+]
+
+
 def get_analytics(start: date, end: date, pivot: str = "CAMPAIGN") -> list[dict]:
     """Metricas (impressoes, cliques, gasto, leads) por campanha ou anuncio.
 
     pivot: CAMPAIGN ou CREATIVE.
+
+    A query string e montada manualmente porque a API do LinkedIn usa sintaxe
+    Rest.li (parenteses, List(), virgulas em `fields`) que o requests codifica
+    de forma incompativel se passada via `params`.
     """
-    url = f"{BASE_URL}/adAnalytics"
-    params = {
-        "q": "analytics",
-        "pivot": pivot,
-        "dateRange": (
-            f"(start:(year:{start.year},month:{start.month},day:{start.day}),"
-            f"end:(year:{end.year},month:{end.month},day:{end.day}))"
-        ),
-        "timeGranularity": "DAILY",
-        "accounts": f"List(urn%3Ali%3AsponsoredAccount%3A{config.LINKEDIN_ACCOUNT_ID})",
-        "fields": "impressions,clicks,costInLocalCurrency,oneClickLeads,"
-                  "reactions,comments,shares,sends,opens,dateRange,pivotValues",
-    }
-    resp = requests.get(url, headers=_headers(), params=params, timeout=30)
+    date_range = (
+        f"(start:(year:{start.year},month:{start.month},day:{start.day}),"
+        f"end:(year:{end.year},month:{end.month},day:{end.day}))"
+    )
+    account_urn = f"List(urn%3Ali%3AsponsoredAccount%3A{config.LINKEDIN_ACCOUNT_ID})"
+    query = (
+        f"q=analytics&pivot={pivot}&timeGranularity=DAILY"
+        f"&dateRange={date_range}"
+        f"&accounts={account_urn}"
+        f"&fields={','.join(ANALYTICS_FIELDS)}"
+    )
+    url = f"{BASE_URL}/adAnalytics?{query}"
+    resp = requests.get(url, headers=_headers(), timeout=30)
     resp.raise_for_status()
     return resp.json().get("elements", [])
 
