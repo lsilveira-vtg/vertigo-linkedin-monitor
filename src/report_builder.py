@@ -95,6 +95,7 @@ def collect_campaign_data(start: date, end: date) -> list[dict]:
         out.append({
             "nome": cfg.get("display", meta.get("name", str(campaign_id))),
             "tipo": cfg.get("type", "leads"),
+            "status": meta.get("status", ""),
             "investimento_brl": invest,
             "leads": leads,
             "cpl_brl": round(invest / leads, 2) if leads else None,

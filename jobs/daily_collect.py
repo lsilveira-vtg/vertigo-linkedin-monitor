@@ -85,6 +85,16 @@ def main() -> None:
 
     print(f"Coleta de {yesterday} concluída: {len(campaign_rows)} campanhas, {len(ad_rows)} anúncios.")
 
+    # Atualiza as visualizações organizadas (Resumo + aba por campanha) do mês corrente
+    try:
+        from src import sheets_views
+        month_start = yesterday.replace(day=1)
+        period = f"{month_start.strftime('%d/%m')} a {yesterday.strftime('%d/%m/%Y')}"
+        sheets_views.rebuild_all(period, month_start, yesterday)
+        print("Visualizações (Resumo + abas por campanha) atualizadas.")
+    except Exception as exc:
+        print(f"  aviso: falha ao atualizar visualizações: {exc}")
+
 
 if __name__ == "__main__":
     main()
