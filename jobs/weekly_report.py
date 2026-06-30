@@ -17,10 +17,10 @@ def main() -> None:
     period = f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
     body = build_report_for_period(start, end)
 
-    # Análise própria do agente — anexada ao final do report
+    # Análise do agente (IA se houver chave, senão motor próprio) — anexada ao report
     try:
         data = collect_campaign_data(start, end)
-        analysis = analyst.analyze(period, data)
+        analysis = analyst.run_analysis(period, data)
         body += "\n\n" + analyst.format_analysis(analysis)
     except Exception as exc:
         print(f"  aviso: análise falhou: {exc}")

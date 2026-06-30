@@ -184,6 +184,20 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
     return Analysis(resumo_executivo=resumo, campanhas=verdicts, acoes_prioritarias=acoes)
 
 
+def run_analysis(period_label: str, campaign_data: list[dict], budgets: dict | None = None) -> Analysis:
+    """Ponto de entrada único. Usa a camada de IA se ANTHROPIC_API_KEY estiver
+    configurada (com fallback para o motor próprio em caso de erro); senão usa
+    o motor próprio de regras."""
+    from . import config
+    if config.ANTHROPIC_API_KEY:
+        try:
+            from . import analyst_ai
+            return analyst_ai.analyze(period_label, campaign_data, budgets)
+        except Exception as exc:
+            print(f"  aviso: análise por IA falhou ({exc}); usando motor próprio.")
+    return analyze(period_label, campaign_data, budgets)
+
+
 def format_analysis(analysis: Analysis) -> str:
     """Formata a análise em texto legível (para e-mail / Discord)."""
     emoji = {"boa": "🟢", "atencao": "🟡", "critica": "🔴"}

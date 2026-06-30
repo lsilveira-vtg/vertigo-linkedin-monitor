@@ -32,7 +32,7 @@ def main() -> None:
 
     try:
         data = collect_campaign_data(start, end)
-        analysis = analyst.analyze(period, data)
+        analysis = analyst.run_analysis(period, data)
         body += "\n\n" + analyst.format_analysis(analysis)
     except Exception as exc:
         print(f"  aviso: análise falhou: {exc}")
