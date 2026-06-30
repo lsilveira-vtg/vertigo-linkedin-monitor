@@ -25,10 +25,6 @@ APPROVED_APPROVERS = [e.strip() for e in os.getenv("APPROVED_APPROVERS", "").spl
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID", "")
 
-# Anthropic (análise por IA)
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-ANALYST_MODEL = os.getenv("ANALYST_MODEL", "claude-opus-4-8")
-
 # Abas da planilha
 SHEET_TABS = [
     "Campanhas",
