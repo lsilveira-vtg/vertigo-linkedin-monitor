@@ -75,3 +75,34 @@ def build_report_for_period(start: date, end: date) -> str:
 
     period = f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
     return format_report(period, reports, budgets, deltas={})
+
+
+def collect_campaign_data(start: date, end: date) -> list[dict]:
+    """Dados estruturados por campanha para a análise por IA (não formata texto)."""
+    analytics = _aggregate(linkedin_client.get_analytics(start, end, pivot="CAMPAIGN"))
+    campaigns_meta = {str(c["id"]): c for c in linkedin_client.get_campaigns()}
+
+    out: list[dict] = []
+    for campaign_id, m in analytics.items():
+        if CAMPAIGN_CONFIG and str(campaign_id) not in CAMPAIGN_CONFIG:
+            continue
+        cfg = CAMPAIGN_CONFIG.get(str(campaign_id), {})
+        meta = campaigns_meta.get(campaign_id, {})
+        invest = round(m.get("costInLocalCurrency", 0), 2)
+        leads = int(m.get("oneClickLeads", 0))
+        impressions = int(m.get("impressions", 0))
+        clicks = int(m.get("clicks", 0))
+        out.append({
+            "nome": cfg.get("display", meta.get("name", str(campaign_id))),
+            "tipo": cfg.get("type", "leads"),
+            "investimento_brl": invest,
+            "leads": leads,
+            "cpl_brl": round(invest / leads, 2) if leads else None,
+            "impressoes": impressions,
+            "cliques": clicks,
+            "ctr": round(clicks / impressions, 4) if impressions else None,
+            "reacoes": int(m.get("likes", 0)),
+            "comentarios": int(m.get("comments", 0)),
+            "compartilhamentos": int(m.get("shares", 0)),
+        })
+    return out

@@ -5,8 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src import mailer
-from src.report_builder import build_report_for_period
+from src import analyst, config, mailer
+from src.report_builder import build_report_for_period, collect_campaign_data
 
 
 def is_first_business_day(d: date) -> bool:
@@ -29,6 +29,14 @@ def main() -> None:
 
     period = f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
     body = build_report_for_period(start, end)
+
+    if config.ANTHROPIC_API_KEY:
+        try:
+            data = collect_campaign_data(start, end)
+            analysis = analyst.analyze(period, data)
+            body += "\n\n" + analyst.format_analysis(analysis)
+        except Exception as exc:
+            print(f"  aviso: análise por IA falhou: {exc}")
 
     mailer.send_email(subject=f"Vertigo | Report Mensal LinkedIn | {period}", body=body)
     print(f"Report mensal {period} enviado.")
