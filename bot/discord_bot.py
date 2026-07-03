@@ -73,15 +73,18 @@ async def report(interaction: discord.Interaction):
     today = date.today()
     start = today - timedelta(days=today.weekday())
     period = f"{start.strftime('%d/%m')} a {today.strftime('%d/%m/%Y')}"
-    body = build_report_for_period(start, today)
-    # Anexa a análise do agente (com alertas de orçamento)
+
+    # 1ª mensagem: o report
+    report_body = build_report_for_period(start, today)
+    await _send_long(interaction, report_body, code_block=True)
+
+    # 2ª mensagem: a análise do agente (separada, para leitura limpa)
     try:
         data = collect_campaign_data(start, today)
         analysis = analyst.run_analysis(period, data, ref_date=today)
-        body += "\n\n" + analyst.format_analysis(analysis)
+        await _send_long(interaction, analyst.format_analysis(analysis), code_block=True)
     except Exception as exc:
-        body += f"\n\n(análise indisponível: {exc})"
-    await _send_long(interaction, body, code_block=True)
+        await interaction.followup.send(f"(análise indisponível: {exc})")
 
 
 @tree.command(name="status", description="Saúde das campanhas ativas (análise do agente)")
