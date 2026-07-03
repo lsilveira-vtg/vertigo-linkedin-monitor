@@ -8,8 +8,8 @@
 import re
 import time
 
-from . import analyst, sheets_client
-from .report_builder import MONTHLY_BUDGETS, collect_campaign_data
+from . import analyst, budget, sheets_client
+from .report_builder import collect_campaign_data
 
 RESUMO_TAB = "📊 Resumo"
 
@@ -23,6 +23,10 @@ RESUMO_HEADER = [
 ]
 
 
+def _brl(v: float) -> str:
+    return f"R$ {v:,.0f}".replace(",", ".")
+
+
 def _tab_name(nome: str) -> str:
     """Nome de aba seguro: sem caracteres proibidos, curto."""
     # Tira o sufixo "[...]" e caracteres invalidos para titulo de aba
@@ -31,7 +35,8 @@ def _tab_name(nome: str) -> str:
     return base[:40] or "Campanha"
 
 
-def rebuild_summary(period_label: str, campaign_data: list[dict], analysis: analyst.Analysis) -> None:
+def rebuild_summary(period_label: str, campaign_data: list[dict], analysis: analyst.Analysis,
+                    ref_date=None) -> None:
     """Reescreve a aba 📊 Resumo do zero com os dados do período."""
     sheet = sheets_client.open_sheet()
     try:
@@ -63,10 +68,24 @@ def rebuild_summary(period_label: str, campaign_data: list[dict], analysis: anal
             v.recomendacao if v else "",
         ])
 
-    # Bloco de orçamento mensal
+    # Bloco de orçamento mensal (teto da conta + sub-limites por campanha)
     rows += [[], ["— Orçamento mensal —"]]
-    for grupo, limite in MONTHLY_BUDGETS.items():
-        rows.append([grupo, "", "", "", "", "", "", "", "", "", f"limite {limite:.0f}", ""])
+    total_gasto = sum(c.get("investimento_brl", 0) or 0 for c in campaign_data)
+    if ref_date is not None:
+        st = budget.account_status(total_gasto, ref_date)
+        if st["teto"]:
+            consumo = f"{st['consumo'] * 100:.0f}%" if st["consumo"] is not None else "—"
+            rows.append([f"Conta (total): {_brl(st['gasto'])} / {_brl(st['teto'])}  ({consumo})"])
+        else:
+            rows.append([f"Conta (total): {_brl(total_gasto)} — teto não configurado"])
+        # Sub-limites por campanha (ex: Liferay)
+        for c in campaign_data:
+            regra = budget.campaign_rule(c["nome"])
+            if regra and regra.get("limite_mensal"):
+                gasto = c.get("investimento_brl", 0) or 0
+                rows.append([f"{regra['chave']}: {_brl(gasto)} / {_brl(float(regra['limite_mensal']))} mensal"])
+    else:
+        rows.append([f"Conta (total): {_brl(total_gasto)}"])
 
     # Resumo executivo do agente no rodapé
     rows += [[], ["— Análise do agente —"], [analysis.resumo_executivo]]
@@ -127,5 +146,5 @@ def rebuild_all(period_label: str, start, end) -> None:
     """Reconstrói todas as visualizações organizadas após uma coleta."""
     data = collect_campaign_data(start, end)
     analysis = analyst.run_analysis(period_label, data, ref_date=end)
-    rebuild_summary(period_label, data, analysis)
+    rebuild_summary(period_label, data, analysis, ref_date=end)
     rebuild_per_campaign()

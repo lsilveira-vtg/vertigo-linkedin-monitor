@@ -21,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import discord
 from discord import app_commands
 
-from src import approvals, config
-from src.report_builder import build_report_for_period
+from src import analyst, approvals, budget, config
+from src.report_builder import build_report_for_period, collect_campaign_data
 
 APPROVER_IDS = {
     int(x) for x in os.getenv("DISCORD_APPROVER_IDS", "").split(",") if x.strip()
@@ -42,7 +42,11 @@ def _channel_check(interaction: discord.Interaction) -> bool:
     return not cid or str(interaction.channel_id) == cid
 
 
-@tree.command(name="report", description="Resumo das campanhas da semana atual")
+def _brl(v: float) -> str:
+    return f"R$ {v:,.0f}".replace(",", ".")
+
+
+@tree.command(name="report", description="Resumo das campanhas da semana atual + análise do agente")
 async def report(interaction: discord.Interaction):
     if not _channel_check(interaction):
         await interaction.response.send_message("Use este comando no canal do projeto.", ephemeral=True)
@@ -50,8 +54,61 @@ async def report(interaction: discord.Interaction):
     await interaction.response.defer()
     today = date.today()
     start = today - timedelta(days=today.weekday())
+    period = f"{start.strftime('%d/%m')} a {today.strftime('%d/%m/%Y')}"
     body = build_report_for_period(start, today)
+    # Anexa a análise do agente (com alertas de orçamento)
+    try:
+        data = collect_campaign_data(start, today)
+        analysis = analyst.run_analysis(period, data, ref_date=today)
+        body += "\n\n" + analyst.format_analysis(analysis)
+    except Exception as exc:
+        body += f"\n\n(análise indisponível: {exc})"
     await interaction.followup.send(f"```\n{body}\n```")
+
+
+@tree.command(name="status", description="Saúde das campanhas ativas (análise do agente)")
+async def status(interaction: discord.Interaction):
+    if not _channel_check(interaction):
+        await interaction.response.send_message("Use este comando no canal do projeto.", ephemeral=True)
+        return
+    await interaction.response.defer()
+    today = date.today()
+    start = today.replace(day=1)
+    period = f"{start.strftime('%d/%m')} a {today.strftime('%d/%m/%Y')}"
+    data = collect_campaign_data(start, today)
+    analysis = analyst.run_analysis(period, data, ref_date=today)
+    emoji = {"boa": "🟢", "atencao": "🟡", "critica": "🔴"}
+    lines = [f"**Status das campanhas — {period}**", analysis.resumo_executivo, ""]
+    for v in analysis.campanhas:
+        lines.append(f"{emoji.get(v.saude, '•')} **{v.nome}** — {v.diagnostico}")
+    await interaction.followup.send("\n".join(lines)[:1900])
+
+
+@tree.command(name="budget", description="Orçamento do mês: gasto vs teto da conta e sub-limites")
+async def budget_cmd(interaction: discord.Interaction):
+    if not _channel_check(interaction):
+        await interaction.response.send_message("Use este comando no canal do projeto.", ephemeral=True)
+        return
+    await interaction.response.defer()
+    today = date.today()
+    start = today.replace(day=1)
+    data = collect_campaign_data(start, today)
+    total = sum(c.get("investimento_brl", 0) or 0 for c in data)
+    st = budget.account_status(total, today)
+    lines = [f"**Orçamento — {today.strftime('%m/%Y')}**"]
+    if st["teto"]:
+        consumo = f"{st['consumo'] * 100:.0f}%" if st["consumo"] is not None else "—"
+        alerta = " ⚠️" if st["consumo"] and st["consumo"] >= 0.90 else ""
+        lines.append(f"Conta (total): {_brl(st['gasto'])} / {_brl(st['teto'])} ({consumo}){alerta}")
+    else:
+        lines.append(f"Conta (total): {_brl(total)} — teto não configurado")
+    for c in data:
+        regra = budget.campaign_rule(c["nome"])
+        if regra and regra.get("limite_mensal"):
+            gasto = c.get("investimento_brl", 0) or 0
+            estouro = " ⚠️" if gasto > float(regra["limite_mensal"]) else ""
+            lines.append(f"{regra['chave']}: {_brl(gasto)} / {_brl(float(regra['limite_mensal']))}{estouro}")
+    await interaction.followup.send("\n".join(lines))
 
 
 @tree.command(name="pendentes", description="Recomendações aguardando aprovação")
