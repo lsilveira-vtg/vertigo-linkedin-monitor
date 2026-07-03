@@ -126,6 +126,6 @@ def rebuild_per_campaign() -> None:
 def rebuild_all(period_label: str, start, end) -> None:
     """Reconstrói todas as visualizações organizadas após uma coleta."""
     data = collect_campaign_data(start, end)
-    analysis = analyst.run_analysis(period_label, data)
+    analysis = analyst.run_analysis(period_label, data, ref_date=end)
     rebuild_summary(period_label, data, analysis)
     rebuild_per_campaign()

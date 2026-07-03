@@ -135,8 +135,13 @@ def _analisar_inmail(c: dict) -> CampaignVerdict:
     return CampaignVerdict(c["nome"], diag, "boa", "Manter e acompanhar a conversão.")
 
 
-def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None = None) -> Analysis:
-    """Analisa os dados das campanhas e retorna o veredito estruturado."""
+def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None = None,
+            ref_date=None) -> Analysis:
+    """Analisa os dados das campanhas e retorna o veredito estruturado.
+
+    ref_date: data de referência (para checar teto mensal e datas-limite de
+    orçamento). Se None, os alertas de orçamento são omitidos.
+    """
     verdicts: list[CampaignVerdict] = []
     for c in campaign_data:
         tipo = c.get("tipo", "leads")
@@ -166,8 +171,30 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
         partes.append("Nenhum alerta crítico — operação saudável no período.")
     resumo = " ".join(partes)
 
-    # Ações prioritárias: críticas primeiro, depois atenção
-    acoes: list[str] = []
+    # Alertas de orçamento (teto da conta + sub-limites/datas por campanha)
+    budget_alerts: list[str] = []
+    if ref_date is not None:
+        from . import budget
+        st = budget.account_status(total_invest, ref_date)
+        if st["teto"] and st["consumo"] is not None and st["consumo"] > 1.0:
+            budget_alerts.append(
+                f"Conta ultrapassou o teto de {_brl(st['teto'])} do mês "
+                f"({_brl(st['gasto'])} gastos). Reduzir budgets imediatamente."
+            )
+        elif st["teto"] and st["consumo"] is not None and st["consumo"] >= 0.90:
+            budget_alerts.append(
+                f"Conta em {_pct(st['consumo'])} do teto de {_brl(st['teto'])} "
+                f"({_brl(st['gasto'])}). Atenção para não estourar."
+            )
+        for c in campaign_data:
+            budget_alerts += budget.campaign_alerts(
+                c["nome"], c.get("investimento_brl", 0) or 0, ref_date
+            )
+        if st["teto"]:
+            resumo += f" Teto do mês: {_brl(st['teto'])} (consumo {_pct(st['consumo']) if st['consumo'] else '—'})."
+
+    # Ações prioritárias: orçamento primeiro (mais sensível), depois críticas e atenção
+    acoes: list[str] = list(budget_alerts)
     for v in criticas + atencao:
         acoes.append(f"{v.nome}: {v.recomendacao}")
     if not acoes:
@@ -184,18 +211,29 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
     return Analysis(resumo_executivo=resumo, campanhas=verdicts, acoes_prioritarias=acoes)
 
 
-def run_analysis(period_label: str, campaign_data: list[dict], budgets: dict | None = None) -> Analysis:
+def run_analysis(period_label: str, campaign_data: list[dict], budgets: dict | None = None,
+                 ref_date=None) -> Analysis:
     """Ponto de entrada único. Usa a camada de IA se ANTHROPIC_API_KEY estiver
     configurada (com fallback para o motor próprio em caso de erro); senão usa
-    o motor próprio de regras."""
+    o motor próprio de regras. Os alertas de orçamento (ref_date) são sempre
+    aplicados pelo motor próprio, mesmo quando a IA gera a análise."""
     from . import config
     if config.ANTHROPIC_API_KEY:
         try:
             from . import analyst_ai
-            return analyst_ai.analyze(period_label, campaign_data, budgets)
+            result = analyst_ai.analyze(period_label, campaign_data, budgets)
+            # Garante os alertas de orçamento no topo, independentemente da camada IA
+            if ref_date is not None:
+                base = analyze(period_label, campaign_data, budgets, ref_date)
+                extra = [a for a in base.acoes_prioritarias if a not in result.acoes_prioritarias]
+                # mantém só os alertas de orçamento (vêm primeiro no motor próprio)
+                orc = [a for a in extra if "teto" in a.lower() or "sub-limite" in a.lower()
+                       or "PAUSADA" in a or "expirou" in a]
+                result.acoes_prioritarias = orc + result.acoes_prioritarias
+            return result
         except Exception as exc:
             print(f"  aviso: análise por IA falhou ({exc}); usando motor próprio.")
-    return analyze(period_label, campaign_data, budgets)
+    return analyze(period_label, campaign_data, budgets, ref_date)
 
 
 def format_analysis(analysis: Analysis) -> str:
