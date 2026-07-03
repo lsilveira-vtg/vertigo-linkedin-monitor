@@ -46,6 +46,24 @@ def _brl(v: float) -> str:
     return f"R$ {v:,.0f}".replace(",", ".")
 
 
+async def _send_long(interaction: discord.Interaction, text: str, code_block: bool = False) -> None:
+    """Envia texto respeitando o limite de 2000 caracteres do Discord (quebra em partes)."""
+    limit = 1900  # margem para as marcações de bloco de código
+    chunks: list[str] = []
+    for paragrafo in text.split("\n"):
+        if chunks and len(chunks[-1]) + len(paragrafo) + 1 <= limit:
+            chunks[-1] += "\n" + paragrafo
+        else:
+            # se um único parágrafo for gigante, fatia em pedaços
+            while len(paragrafo) > limit:
+                chunks.append(paragrafo[:limit])
+                paragrafo = paragrafo[limit:]
+            chunks.append(paragrafo)
+    for ch in chunks:
+        content = f"```\n{ch}\n```" if code_block else ch
+        await interaction.followup.send(content)
+
+
 @tree.command(name="report", description="Resumo das campanhas da semana atual + análise do agente")
 async def report(interaction: discord.Interaction):
     if not _channel_check(interaction):
@@ -63,7 +81,7 @@ async def report(interaction: discord.Interaction):
         body += "\n\n" + analyst.format_analysis(analysis)
     except Exception as exc:
         body += f"\n\n(análise indisponível: {exc})"
-    await interaction.followup.send(f"```\n{body}\n```")
+    await _send_long(interaction, body, code_block=True)
 
 
 @tree.command(name="status", description="Saúde das campanhas ativas (análise do agente)")
@@ -81,7 +99,7 @@ async def status(interaction: discord.Interaction):
     lines = [f"**Status das campanhas — {period}**", analysis.resumo_executivo, ""]
     for v in analysis.campanhas:
         lines.append(f"{emoji.get(v.saude, '•')} **{v.nome}** — {v.diagnostico}")
-    await interaction.followup.send("\n".join(lines)[:1900])
+    await _send_long(interaction, "\n".join(lines))
 
 
 @tree.command(name="budget", description="Orçamento do mês: gasto vs teto da conta e sub-limites")
@@ -159,7 +177,21 @@ async def rejeitar(interaction: discord.Interaction, id: int):
 
 @client.event
 async def on_ready():
-    await tree.sync()
+    # Se DISCORD_GUILD_ID estiver definido, sincroniza os comandos direto no
+    # servidor (aparecem na hora). Caso contrário, sync global (até ~1h p/ propagar).
+    guild_id = os.getenv("DISCORD_GUILD_ID", "").strip()
+    if guild_id:
+        guild = discord.Object(id=int(guild_id))
+        # 1) Registra os comandos no servidor (aparecem na hora)
+        tree.copy_global_to(guild=guild)
+        await tree.sync(guild=guild)
+        # 2) Remove os comandos globais do Discord (evita duplicatas global + servidor)
+        tree.clear_commands(guild=None)
+        await tree.sync()
+        print(f"Comandos sincronizados no servidor {guild_id} (globais removidos)")
+    else:
+        await tree.sync()
+        print("Comandos sincronizados globalmente (pode levar até 1h)")
     print(f"Bot conectado como {client.user}")
 
 

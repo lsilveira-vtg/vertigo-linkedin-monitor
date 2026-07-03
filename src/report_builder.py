@@ -70,8 +70,19 @@ def build_report_for_period(start: date, end: date) -> str:
             rep.leads = int(metrics.get("oneClickLeads", 0))
         reports.append(rep)
 
-    # Orcamento mensal: gasto MTD por grupo (simplificado — refinar com dados reais)
-    budgets = {name: (0.0, cap) for name, cap in MONTHLY_BUDGETS.items()}
+    # Orçamento mensal: teto da conta (com override do mês) + sub-limites por campanha
+    from . import budget
+    total_gasto = sum(r.invest for r in reports)
+    budgets: dict[str, tuple[float, float | None]] = {}
+    teto = budget.total_cap(end.strftime("%Y-%m"))
+    if teto is not None:
+        budgets["Conta (total)"] = (total_gasto, teto)
+    for campaign_id, metrics in analytics.items():
+        cfg = CAMPAIGN_CONFIG.get(str(campaign_id), {})
+        nome = cfg.get("display", campaigns_meta.get(campaign_id, {}).get("name", str(campaign_id)))
+        regra = budget.campaign_rule(nome)
+        if regra and regra.get("limite_mensal"):
+            budgets[regra["chave"]] = (metrics.get("costInLocalCurrency", 0), float(regra["limite_mensal"]))
 
     period = f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
     return format_report(period, reports, budgets, deltas={})

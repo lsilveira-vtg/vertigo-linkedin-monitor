@@ -86,12 +86,13 @@ def format_report(
         parts.append(format_campaign(c))
         parts.append("")
 
-    parts.append("——ORÇAMENTO MENSAL——")
-    total = 0.0
-    for name, (spent, cap) in budgets.items():
-        total += spent
-        parts.append(f"{name}: {_brl(spent)} / {_brl(cap)} ({spent / cap:.0%})")
-    parts.append(f"Total: {_brl(total)}")
+    if budgets:
+        parts.append("——ORÇAMENTO MENSAL——")
+        for name, (spent, cap) in budgets.items():
+            if cap:
+                parts.append(f"{name}: {_brl(spent)} / {_brl(cap)} ({spent / cap:.0%})")
+            else:
+                parts.append(f"{name}: {_brl(spent)}")
 
     if deltas:
         parts.append("")
