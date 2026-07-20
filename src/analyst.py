@@ -30,6 +30,7 @@ class Analysis:
     resumo_executivo: str
     campanhas: list[CampaignVerdict] = field(default_factory=list)
     acoes_prioritarias: list[str] = field(default_factory=list)
+    rodape: str = ""   # linha de custo da IA (vazio quando é o motor próprio)
 
 
 def _brl(v: float) -> str:
@@ -251,4 +252,7 @@ def format_analysis(analysis: Analysis) -> str:
     lines.append("— Ações prioritárias —")
     for i, acao in enumerate(analysis.acoes_prioritarias, 1):
         lines.append(f"{i}. {acao}")
+    if analysis.rodape:
+        lines.append("")
+        lines.append(analysis.rodape)
     return "\n".join(lines)

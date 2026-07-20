@@ -28,6 +28,8 @@ DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID", "")
 # Anthropic (camada de análise por IA — opcional; sem chave usa o motor próprio)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANALYST_MODEL = os.getenv("ANALYST_MODEL", "claude-opus-4-8")
+# Orçamento mensal de referência da chave (USD) — usado no contador de custo
+ANTHROPIC_MONTHLY_BUDGET_USD = float(os.getenv("ANTHROPIC_MONTHLY_BUDGET_USD", "5"))
 
 # Abas da planilha
 SHEET_TABS = [

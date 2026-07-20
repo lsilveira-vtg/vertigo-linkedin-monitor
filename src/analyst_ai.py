@@ -77,8 +77,18 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
         response = stream.get_final_message()
 
     data = json.loads(next(b.text for b in response.content if b.type == "text"))
+
+    # Contador de custo (não gera chamada extra — usa os tokens da própria resposta)
+    rodape = ""
+    try:
+        from . import ai_costs
+        rodape = ai_costs.log_and_summarize(response.usage, config.ANALYST_MODEL)
+    except Exception as exc:
+        print(f"  aviso: contador de custo falhou: {exc}")
+
     return Analysis(
         resumo_executivo=data["resumo_executivo"],
         campanhas=[CampaignVerdict(**c) for c in data["campanhas"]],
         acoes_prioritarias=data["acoes_prioritarias"],
+        rodape=rodape,
     )
