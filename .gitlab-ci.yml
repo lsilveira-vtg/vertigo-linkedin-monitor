@@ -45,3 +45,13 @@ report_mensal:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_JOB == "monthly"'
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: manual
+
+# Job de teste — imprime a análise no log (não envia e-mail nem altera a planilha).
+# Rodar manualmente em CI/CD > Pipelines > Run pipeline (branch main) > botão do job.
+testar_analise:
+  stage: report
+  script:
+    - python scripts/test_analise.py
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
