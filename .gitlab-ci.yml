@@ -50,6 +50,7 @@ report_mensal:
 # Rodar manualmente em CI/CD > Pipelines > Run pipeline (branch main) > botão do job.
 testar_analise:
   stage: report
+  needs: []          # roda sozinho, sem esperar o stage de coleta
   script:
     - python scripts/test_analise.py
   rules:
