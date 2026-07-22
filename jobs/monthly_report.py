@@ -40,7 +40,9 @@ def main() -> None:
     mailer.send_email(subject=f"Vertigo | Report Mensal LinkedIn | {period}", body=body)
     print(f"Report mensal {period} enviado.")
 
-    discord_notify.post_report(f"Report Mensal LinkedIn | {period}", body)
+    # DESABILITADO temporariamente até definir o canal final do Discord.
+    # Reativar removendo o comentário abaixo (e mantendo DISCORD_WEBHOOK_URL no GitLab).
+    # discord_notify.post_report(f"Report Mensal LinkedIn | {period}", body)
 
 
 if __name__ == "__main__":
