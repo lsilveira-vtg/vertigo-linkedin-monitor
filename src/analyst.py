@@ -6,15 +6,19 @@ A análise é consultiva — não executa nenhuma ação nas campanhas.
 """
 from dataclasses import dataclass, field
 
-# Benchmarks de referência para LinkedIn Ads B2B de tecnologia.
-# Ajustar conforme o histórico real da conta for crescendo.
+# Benchmarks calibrados com o histórico real da Vertigo (jul/2026).
+# Base: campanhas de leads eficientes rodam a R$ 22–30; CPL médio (blended) da
+# conta ~R$ 104; ponderado com tudo ~R$ 140. Régua para campanhas de LEADS:
+CPL_BOM = 40.0            # <= R$ 40 = excelente (faixa das melhores campanhas)
+CPL_ALTO = 100.0          # > R$ 100 = alerta (pior que a média da conta)
 CTR_BOM = 0.0060          # CTR >= 0.60% é bom no LinkedIn
 CTR_BAIXO = 0.0035        # CTR < 0.35% é fraco
-CPL_BOM = 60.0            # CPL <= R$ 60 é bom para o segmento
-CPL_ALTO = 120.0          # CPL > R$ 120 acende alerta
-ENGAGEMENT_BOM = 0.0200   # engagement rate >= 2% é bom para branding
-ENGAGEMENT_BAIXO = 0.0050 # < 0.5% é fraco
+ENGAGEMENT_BOM = 0.0100   # engagement rate >= 1% é bom para branding (base Vertigo ~0.12%)
+ENGAGEMENT_BAIXO = 0.0010 # < 0.1% é fraco
 GASTO_SEM_LEAD = 50.0     # gasto acima disso sem nenhum lead = crítico (campanha de leads)
+
+# CPL de referência da conta (base histórica) — usado para contextualizar cada campanha.
+CPL_REFERENCIA_CONTA = 104.0
 
 
 @dataclass
@@ -164,12 +168,19 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
         f"No período, {len(campaign_data)} campanha(s) somaram {_brl(total_invest)} de investimento "
         f"e {total_leads} lead(s)" + (f" (CPL geral {_brl(cpl_geral)})." if cpl_geral else ".")
     ]
+    # Contextualiza o CPL do período contra a base histórica da conta (~R$ 104)
+    if cpl_geral is not None:
+        if cpl_geral <= CPL_BOM:
+            partes.append(f"CPL bem abaixo da média histórica da conta ({_brl(CPL_REFERENCIA_CONTA)}) — ótima eficiência.")
+        elif cpl_geral > CPL_REFERENCIA_CONTA:
+            partes.append(f"CPL acima da média histórica da conta ({_brl(CPL_REFERENCIA_CONTA)}) — atenção à eficiência.")
     if criticas:
         partes.append(f"{len(criticas)} campanha(s) em estado crítico exigem ação imediata.")
     elif atencao:
         partes.append(f"{len(atencao)} campanha(s) pedem atenção, mas nada crítico.")
     else:
         partes.append("Nenhum alerta crítico — operação saudável no período.")
+    partes.append("(Leads = formulários do LinkedIn; MQLs vêm do CRM e podem diferir.)")
     resumo = " ".join(partes)
 
     # Alertas de orçamento (teto da conta + sub-limites/datas por campanha)
