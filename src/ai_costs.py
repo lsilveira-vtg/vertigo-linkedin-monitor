@@ -58,10 +58,16 @@ def log_and_summarize(usage, model: str) -> str:
         except Exception:
             ws = sheet.add_worksheet(title=TAB, rows=1000, cols=len(HEADER))
             ws.update(values=[HEADER], range_name="A1")
-        # Soma o que já foi gasto neste mês antes de registrar a chamada atual
+        # Soma o que já foi gasto neste mês antes de registrar a chamada atual.
+        # Aceita vírgula decimal (formato pt-BR gravado pelo Sheets).
+        def _num(s: str) -> float:
+            try:
+                return float(str(s).replace(".", "").replace(",", ".")) if "," in str(s) else float(s)
+            except ValueError:
+                return 0.0
         registros = ws.get_all_values()[1:]
         gasto_mes_anterior = sum(
-            float(r[5]) for r in registros
+            _num(r[5]) for r in registros
             if len(r) > 5 and r[1] == mes and r[5]
         )
         acumulado = gasto_mes_anterior + custo
