@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src import analyst, mailer
+from src import analyst, mailer, discord_notify
 from src.report_builder import build_report_for_period, collect_campaign_data
 
 
@@ -27,6 +27,8 @@ def main() -> None:
 
     mailer.send_email(subject=f"Vertigo | Report Semanal LinkedIn | {period}", body=body)
     print(f"Report semanal {period} enviado.")
+
+    discord_notify.post_report(f"Report Semanal LinkedIn | {period}", body)
 
 
 if __name__ == "__main__":

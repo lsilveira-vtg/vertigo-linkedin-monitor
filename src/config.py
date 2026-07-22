@@ -24,6 +24,8 @@ APPROVED_APPROVERS = [e.strip() for e in os.getenv("APPROVED_APPROVERS", "").spl
 # Discord
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID", "")
+# Webhook do canal (posta reports automaticamente, sem precisar do bot rodando 24/7)
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 
 # Anthropic (camada de análise por IA — opcional; sem chave usa o motor próprio)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
