@@ -30,6 +30,7 @@ coleta_diaria:
 
 report_semanal:
   stage: report
+  needs: []          # roda sozinho (não espera a coleta) — no schedule semanal a coleta nem entra
   script:
     - python jobs/weekly_report.py
   rules:
@@ -39,6 +40,7 @@ report_semanal:
 
 report_mensal:
   stage: report
+  needs: []          # roda sozinho (não espera a coleta) — no schedule mensal a coleta nem entra
   script:
     - python jobs/monthly_report.py
   rules:
