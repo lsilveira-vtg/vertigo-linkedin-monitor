@@ -56,3 +56,13 @@ testar_analise:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: manual
+
+# CPL histórico (12 meses) por campanha — imprime no log, não altera nada.
+cpl_historico:
+  stage: report
+  needs: []
+  script:
+    - python scripts/cpl_historico.py
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
