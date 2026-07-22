@@ -233,7 +233,21 @@ def run_analysis(period_label: str, campaign_data: list[dict], budgets: dict | N
     if config.ANTHROPIC_API_KEY:
         try:
             from . import analyst_ai
-            result = analyst_ai.analyze(period_label, campaign_data, budgets)
+            # Enriquece o contexto de orçamento da IA com o teto do mês e o consumo,
+            # para o resumo não dizer "sem dados de orçamento" quando a regra existe.
+            budgets_ia = dict(budgets or {})
+            if ref_date is not None:
+                from . import budget
+                total_invest = sum(c.get("investimento_brl", 0) or 0 for c in campaign_data)
+                st = budget.account_status(total_invest, ref_date)
+                if st["teto"] is not None:
+                    budgets_ia["conta"] = {
+                        "mes": st["mes"],
+                        "teto_mensal_brl": st["teto"],
+                        "gasto_periodo_brl": st["gasto"],
+                        "consumo_do_teto": st["consumo"],
+                    }
+            result = analyst_ai.analyze(period_label, campaign_data, budgets_ia)
             # Garante os alertas de orçamento no topo, independentemente da camada IA
             if ref_date is not None:
                 base = analyze(period_label, campaign_data, budgets, ref_date)
