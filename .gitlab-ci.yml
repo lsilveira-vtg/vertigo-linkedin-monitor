@@ -18,6 +18,17 @@ default:
     - dind
   before_script:
     - pip install -r requirements.txt
+  # Repete automaticamente falhas transitórias (ex.: "Empty reply from server"
+  # ao baixar o código, indisponibilidade momentânea do runner/servidor).
+  # Bugs de código (script_failure) NÃO são repetidos — falham na hora.
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - unknown_failure
+      - api_failure
+      - scheduler_failure
 
 coleta_diaria:
   stage: collect
