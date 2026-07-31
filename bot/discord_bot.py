@@ -11,6 +11,7 @@ Comandos:
 A lista de aprovadores fica na variavel DISCORD_APPROVER_IDS
 (IDs de usuario do Discord separados por virgula).
 """
+import asyncio
 import os
 import sys
 from datetime import date, timedelta
@@ -74,14 +75,14 @@ async def report(interaction: discord.Interaction):
     start = today - timedelta(days=today.weekday())
     period = f"{start.strftime('%d/%m')} a {today.strftime('%d/%m/%Y')}"
 
-    # 1ª mensagem: o report
-    report_body = build_report_for_period(start, today)
+    # 1ª mensagem: o report (rodado em thread para não travar o loop do Discord)
+    report_body = await asyncio.to_thread(build_report_for_period, start, today)
     await _send_long(interaction, report_body, code_block=True)
 
     # 2ª mensagem: a análise do agente (separada, para leitura limpa)
     try:
-        data = collect_campaign_data(start, today)
-        analysis = analyst.run_analysis(period, data, ref_date=today)
+        data = await asyncio.to_thread(collect_campaign_data, start, today)
+        analysis = await asyncio.to_thread(analyst.run_analysis, period, data, None, today)
         await _send_long(interaction, analyst.format_analysis(analysis), code_block=True)
     except Exception as exc:
         await interaction.followup.send(f"(análise indisponível: {exc})")
@@ -96,8 +97,8 @@ async def status(interaction: discord.Interaction):
     today = date.today()
     start = today.replace(day=1)
     period = f"{start.strftime('%d/%m')} a {today.strftime('%d/%m/%Y')}"
-    data = collect_campaign_data(start, today)
-    analysis = analyst.run_analysis(period, data, ref_date=today)
+    data = await asyncio.to_thread(collect_campaign_data, start, today)
+    analysis = await asyncio.to_thread(analyst.run_analysis, period, data, None, today)
     emoji = {"boa": "🟢", "atencao": "🟡", "critica": "🔴"}
     lines = [f"**Status das campanhas — {period}**", analysis.resumo_executivo, ""]
     for v in analysis.campanhas:
@@ -113,7 +114,7 @@ async def budget_cmd(interaction: discord.Interaction):
     await interaction.response.defer()
     today = date.today()
     start = today.replace(day=1)
-    data = collect_campaign_data(start, today)
+    data = await asyncio.to_thread(collect_campaign_data, start, today)
     total = sum(c.get("investimento_brl", 0) or 0 for c in data)
     st = budget.account_status(total, today)
     lines = [f"**Orçamento — {today.strftime('%m/%Y')}**"]
@@ -138,7 +139,7 @@ async def pendentes(interaction: discord.Interaction):
         await interaction.response.send_message("Use este comando no canal do projeto.", ephemeral=True)
         return
     await interaction.response.defer()
-    items = approvals.list_pending()
+    items = await asyncio.to_thread(approvals.list_pending)
     if not items:
         await interaction.followup.send("✅ Nenhuma recomendação pendente.")
         return
@@ -161,7 +162,7 @@ async def aprovar(interaction: discord.Interaction, id: int):
         )
         return
     await interaction.response.defer()
-    result = approvals.approve(id, approver=str(interaction.user))
+    result = await asyncio.to_thread(approvals.approve, id, str(interaction.user))
     await interaction.followup.send(f"✅ {result}")
 
 
@@ -174,7 +175,7 @@ async def rejeitar(interaction: discord.Interaction, id: int):
         )
         return
     await interaction.response.defer()
-    result = approvals.reject(id, approver=str(interaction.user))
+    result = await asyncio.to_thread(approvals.reject, id, str(interaction.user))
     await interaction.followup.send(f"❌ {result}")
 
 
