@@ -13,7 +13,7 @@ stages:
   - report
   - deploy
 
-default:
+.python_base:
   image: python:3.12
   tags:
     - dind
@@ -32,6 +32,7 @@ default:
       - scheduler_failure
 
 coleta_diaria:
+  extends: .python_base
   stage: collect
   script:
     - python jobs/daily_collect.py
@@ -41,6 +42,7 @@ coleta_diaria:
       when: manual
 
 report_semanal:
+  extends: .python_base
   stage: report
   needs: []          # roda sozinho (não espera a coleta) — no schedule semanal a coleta nem entra
   script:
@@ -51,6 +53,7 @@ report_semanal:
       when: manual
 
 report_mensal:
+  extends: .python_base
   stage: report
   needs: []          # roda sozinho (não espera a coleta) — no schedule mensal a coleta nem entra
   script:
@@ -63,6 +66,7 @@ report_mensal:
 # Job de teste — imprime a análise no log (não envia e-mail nem altera a planilha).
 # Rodar manualmente em CI/CD > Pipelines > Run pipeline (branch main) > botão do job.
 testar_analise:
+  extends: .python_base
   stage: report
   needs: []          # roda sozinho, sem esperar o stage de coleta
   script:
@@ -73,6 +77,7 @@ testar_analise:
 
 # CPL histórico (12 meses) por campanha — imprime no log, não altera nada.
 cpl_historico:
+  extends: .python_base
   stage: report
   needs: []
   script:
