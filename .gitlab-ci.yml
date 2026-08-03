@@ -11,6 +11,7 @@
 stages:
   - collect
   - report
+  - deploy
 
 default:
   image: python:3.12
@@ -79,3 +80,39 @@ cpl_historico:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: manual
+
+deploy-job-dev:
+  stage: deploy
+  image:
+    name: alpine:3.20
+  environment:
+    name: producao/bot-discord
+  resource_group: producao
+  interruptible: false
+  script:
+    - apk add --no-cache openssh-client
+    - printf '%s\n' "${SSH_KEY}" > deploy_key.pem
+    - chmod 400 deploy_key.pem
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H ${SSH_HOST} >> ~/.ssh/known_hosts
+    - |
+        ssh -i "deploy_key.pem" -o BatchMode=yes ${SSH_USER}@${SSH_HOST} "
+        set -e
+        cd /home/ubuntu/vertigo-linkedin-monitor
+        git pull --ff-only
+        docker compose up -d --build --wait --wait-timeout 180
+        docker image prune -f"
+  after_script:
+    - |
+        ssh -i "deploy_key.pem" -o BatchMode=yes ${SSH_USER}@${SSH_HOST} "
+        cd /home/ubuntu/vertigo-linkedin-monitor
+        docker compose ps
+        docker compose logs --tail 40 bot" || true
+    - rm -f deploy_key.pem
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+  tags:
+    - dind
