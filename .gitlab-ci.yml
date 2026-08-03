@@ -131,7 +131,7 @@ deploy-bot:
       test -s ~/.ssh/known_hosts || { echo "ERRO: keyscan não retornou nada — porta 22 da EC2 inacessível do runner?"; exit 1; }
 
     - |
-      ssh -i "deploy_key.pem" -o BatchMode=yes "${SSH_USER}@${SSH_HOST}" "
+      ssh -i "deploy_key.pem" -o StrictHostKeyChecking=no "${SSH_USER}@${SSH_HOST}" "
       set -e
       cd /home/ubuntu/vertigo-linkedin-monitor
       git pull --ff-only
@@ -141,7 +141,7 @@ deploy-bot:
   after_script:
     - |
       if [ -f deploy_key.pem ] && [ -n "${SSH_HOST:-}" ]; then
-        ssh -i "deploy_key.pem" -o BatchMode=yes "${SSH_USER}@${SSH_HOST}" "
+        ssh -i "deploy_key.pem" -o StrictHostKeyChecking=no "${SSH_USER}@${SSH_HOST}" "
         cd /home/ubuntu/vertigo-linkedin-monitor
         docker compose ps
         docker compose logs --tail 40 bot" || true
