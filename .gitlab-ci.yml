@@ -86,7 +86,7 @@ cpl_historico:
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: manual
 
-deploy-job-dev:
+deploy-bot:
   stage: deploy
   image:
     name: alpine:3.20
@@ -108,36 +108,46 @@ deploy-job-dev:
         echo "Causas, em ordem de frequência:"
         echo "  1. Variável marcada 'Protected' e a branch '${CI_COMMIT_REF_NAME:-?}' NÃO é protegida"
         echo "     (Settings > Repository > Protected branches)"
-        echo "  2. Environment scope da variável diferente de '${CI_ENVIRONMENT_NAME:-?}' — use '*'"
+        echo "  2. Environment scope diferente de '${CI_ENVIRONMENT_NAME:-?}' — use '*'"
         echo "  3. Nome divergente em Settings > CI/CD > Variables"
         exit 1
       fi
       echo "destino do deploy: ${SSH_USER}@${SSH_HOST}"
 
     - apk add --no-cache openssh-client
+
     - printf '%s\n' "${SSH_KEY}" > deploy_key.pem
     - chmod 400 deploy_key.pem
-    - ssh-keygen -y -f deploy_key.pem > /dev/null && echo "chave privada OK"
+
+    - |
+      ssh-keygen -y -f deploy_key.pem > /dev/null || { echo "ERRO: chave privada inválida (confira o conteúdo da variável SSH_KEY)"; exit 1; }
+      echo "chave privada OK"
+
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
+
     - ssh-keyscan -H "${SSH_HOST}" >> ~/.ssh/known_hosts
-    - test -s ~/.ssh/known_hosts || { echo "ERRO: keyscan não retornou nada — host/porta 22 inacessível do runner?"; exit 1; }
     - |
-        ssh -i "deploy_key.pem" -o BatchMode=yes "${SSH_USER}@${SSH_HOST}" "
-        set -e
-        cd /home/ubuntu/vertigo-linkedin-monitor
-        git pull --ff-only
-        docker compose up -d --build --wait --wait-timeout 180
-        docker image prune -f"
+      test -s ~/.ssh/known_hosts || { echo "ERRO: keyscan não retornou nada — porta 22 da EC2 inacessível do runner?"; exit 1; }
+
+    - |
+      ssh -i "deploy_key.pem" -o BatchMode=yes "${SSH_USER}@${SSH_HOST}" "
+      set -e
+      cd /home/ubuntu/vertigo-linkedin-monitor
+      git pull --ff-only
+      docker compose up -d --build --wait --wait-timeout 180
+      docker image prune -f"
+
   after_script:
     - |
-        if [ -f deploy_key.pem ] && [ -n "${SSH_HOST:-}" ]; then
-          ssh -i "deploy_key.pem" -o BatchMode=yes "${SSH_USER}@${SSH_HOST}" "
-          cd /home/ubuntu/vertigo-linkedin-monitor
-          docker compose ps
-          docker compose logs --tail 40 bot" || true
-        fi
-    - rm -f deploy_key.pem
+      if [ -f deploy_key.pem ] && [ -n "${SSH_HOST:-}" ]; then
+        ssh -i "deploy_key.pem" -o BatchMode=yes "${SSH_USER}@${SSH_HOST}" "
+        cd /home/ubuntu/vertigo-linkedin-monitor
+        docker compose ps
+        docker compose logs --tail 40 bot" || true
+      fi
+      rm -f deploy_key.pem
+
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
     - if: '$CI_PIPELINE_SOURCE == "web"'
