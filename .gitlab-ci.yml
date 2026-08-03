@@ -81,7 +81,7 @@ cpl_historico:
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: manual
 
-deploy-job-dev:
+deploy-bot:
   stage: deploy
   image:
     name: alpine:3.20
@@ -113,6 +113,6 @@ deploy-job-dev:
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
     - if: '$CI_PIPELINE_SOURCE == "web"'
-      when: manual
   tags:
     - dind
+  when: manual
