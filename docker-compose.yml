@@ -1,5 +1,5 @@
 name: vertigo-linkedin-monitor
- 
+
 services:
   bot:
     build:
@@ -11,9 +11,42 @@ services:
     environment:
       TZ: America/Sao_Paulo
     stop_grace_period: 20s
-    # Sem rotação, o log do bot enche o disco da instância com o tempo
+    labels:
+      autoheal: "true"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import pathlib, sys, time
+          p = pathlib.Path("/tmp/bot-heartbeat")
+          fresco = p.exists() and time.time() - p.stat().st_mtime < 120
+          sys.exit(0 if fresco else 1)
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "5"
+
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    container_name: vtg-autoheal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: 30
+      AUTOHEAL_START_PERIOD: 120
+      DOCKER_SOCK: /var/run/docker.sock
+      TZ: America/Sao_Paulo
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"

@@ -104,3 +104,4 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
         acoes_prioritarias=data["acoes_prioritarias"],
         rodape=rodape,
     )
+
