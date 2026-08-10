@@ -12,8 +12,10 @@ A lista de aprovadores fica na variavel DISCORD_APPROVER_IDS
 (IDs de usuario do Discord separados por virgula).
 """
 import asyncio
+import math
 import os
 import sys
+import time
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -29,9 +31,19 @@ APPROVER_IDS = {
     int(x) for x in os.getenv("DISCORD_APPROVER_IDS", "").split(",") if x.strip()
 }
 
+# Arquivo de heartbeat lido pelo healthcheck do container. Só é atualizado
+# enquanto o bot está de fato conectado ao gateway — assim um travamento que
+# não mata o processo (deadlock, sessão zumbi) deixa o arquivo envelhecer,
+# o container fica unhealthy e pode ser reiniciado automaticamente.
+# A restart policy do Docker sozinha não pega esse caso: processo vivo = ok.
+HEARTBEAT_FILE = Path(os.getenv("BOT_HEARTBEAT_FILE", "/tmp/bot-heartbeat"))
+HEARTBEAT_INTERVAL = int(os.getenv("BOT_HEARTBEAT_INTERVAL", "30"))
+
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
+
+_heartbeat_task: asyncio.Task | None = None
 
 
 def _is_approver(user: discord.User) -> bool:
@@ -45,6 +57,36 @@ def _channel_check(interaction: discord.Interaction) -> bool:
 
 def _brl(v: float) -> str:
     return f"R$ {v:,.0f}".replace(",", ".")
+
+
+def _gateway_ok() -> bool:
+    """Conectado de fato: pronto, socket aberto e com latência já medida
+    (client.latency é NaN antes do primeiro heartbeat do gateway)."""
+    return (
+        client.is_ready()
+        and not client.is_closed()
+        and not math.isnan(client.latency)
+    )
+
+
+async def _heartbeat_loop() -> None:
+    """Toca o arquivo de heartbeat enquanto o bot estiver saudável.
+    Se este loop parar de rodar (event loop travado), o arquivo envelhece
+    e o healthcheck do container reprova."""
+    saudavel_antes = None
+    while True:
+        saudavel = _gateway_ok()
+        if saudavel:
+            try:
+                HEARTBEAT_FILE.write_text(f"{time.time():.0f}\n")
+            except OSError as exc:
+                print(f"  aviso: falha ao escrever heartbeat em {HEARTBEAT_FILE}: {exc}")
+        # imprime só na mudança de estado, para não poluir o log a cada 30s
+        if saudavel != saudavel_antes:
+            estado = "ativo" if saudavel else "suspenso (gateway não está pronto)"
+            print(f"Heartbeat {estado}")
+            saudavel_antes = saudavel
+        await asyncio.sleep(HEARTBEAT_INTERVAL)
 
 
 async def _send_long(interaction: discord.Interaction, text: str, code_block: bool = False) -> None:
@@ -181,6 +223,8 @@ async def rejeitar(interaction: discord.Interaction, id: int):
 
 @client.event
 async def on_ready():
+    global _heartbeat_task
+
     # Status/presença: deixa claro que é um bot oficial do Marketing (não malicioso).
     await client.change_presence(
         status=discord.Status.online,
@@ -203,6 +247,11 @@ async def on_ready():
         await tree.sync()
         print("Comandos sincronizados globalmente (pode levar até 1h)")
     print(f"Bot conectado como {client.user}")
+
+    # on_ready dispara de novo a cada reconexão — não duplica a task
+    if _heartbeat_task is None or _heartbeat_task.done():
+        _heartbeat_task = client.loop.create_task(_heartbeat_loop())
+        print(f"Heartbeat a cada {HEARTBEAT_INTERVAL}s em {HEARTBEAT_FILE}")
 
 
 if __name__ == "__main__":

@@ -11,8 +11,9 @@
 stages:
   - collect
   - report
+  - deploy
 
-default:
+.python_base:
   image: python:3.12
   tags:
     - dind
@@ -31,6 +32,7 @@ default:
       - scheduler_failure
 
 coleta_diaria:
+  extends: .python_base
   stage: collect
   script:
     - python jobs/daily_collect.py
@@ -40,6 +42,7 @@ coleta_diaria:
       when: manual
 
 report_semanal:
+  extends: .python_base
   stage: report
   needs: []          # roda sozinho (não espera a coleta) — no schedule semanal a coleta nem entra
   script:
@@ -50,6 +53,7 @@ report_semanal:
       when: manual
 
 report_mensal:
+  extends: .python_base
   stage: report
   needs: []          # roda sozinho (não espera a coleta) — no schedule mensal a coleta nem entra
   script:
@@ -62,6 +66,7 @@ report_mensal:
 # Job de teste — imprime a análise no log (não envia e-mail nem altera a planilha).
 # Rodar manualmente em CI/CD > Pipelines > Run pipeline (branch main) > botão do job.
 testar_analise:
+  extends: .python_base
   stage: report
   needs: []          # roda sozinho, sem esperar o stage de coleta
   script:
@@ -72,6 +77,7 @@ testar_analise:
 
 # CPL histórico (12 meses) por campanha — imprime no log, não altera nada.
 cpl_historico:
+  extends: .python_base
   stage: report
   needs: []
   script:
@@ -79,3 +85,70 @@ cpl_historico:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: manual
+
+deploy-bot:
+  stage: deploy
+  image:
+    name: alpine:3.20
+  tags:
+    - dind
+  environment:
+    name: producao/bot-discord
+  resource_group: producao
+  interruptible: false
+  script:
+    - |
+      faltando=""
+      for v in SSH_KEY SSH_USER SSH_HOST; do
+        eval "valor=\${$v:-}"
+        [ -n "$valor" ] || faltando="$faltando $v"
+      done
+      if [ -n "$faltando" ]; then
+        echo "ERRO: variável(is) vazia(s):$faltando"
+        echo "Causas, em ordem de frequência:"
+        echo "  1. Variável marcada 'Protected' e a branch '${CI_COMMIT_REF_NAME:-?}' NÃO é protegida"
+        echo "     (Settings > Repository > Protected branches)"
+        echo "  2. Environment scope diferente de '${CI_ENVIRONMENT_NAME:-?}' — use '*'"
+        echo "  3. Nome divergente em Settings > CI/CD > Variables"
+        exit 1
+      fi
+      echo "destino do deploy: ${SSH_USER}@${SSH_HOST}"
+
+    - apk add --no-cache openssh-client
+
+    - printf '%s\n' "${SSH_KEY}" > deploy_key.pem
+    - chmod 400 deploy_key.pem
+
+    - |
+      ssh-keygen -y -f deploy_key.pem > /dev/null || { echo "ERRO: chave privada inválida (confira o conteúdo da variável SSH_KEY)"; exit 1; }
+      echo "chave privada OK"
+
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+
+    - ssh-keyscan -H "${SSH_HOST}" >> ~/.ssh/known_hosts
+    - |
+      test -s ~/.ssh/known_hosts || { echo "ERRO: keyscan não retornou nada — porta 22 da EC2 inacessível do runner?"; exit 1; }
+
+    - |
+      ssh -i "deploy_key.pem" -o StrictHostKeyChecking=no "${SSH_USER}@${SSH_HOST}" "
+      set -e
+      cd /home/ubuntu/vertigo-linkedin-monitor
+      git pull --ff-only
+      docker compose up -d --build --wait --wait-timeout 180
+      docker image prune -f"
+
+  after_script:
+    - |
+      if [ -f deploy_key.pem ] && [ -n "${SSH_HOST:-}" ]; then
+        ssh -i "deploy_key.pem" -o StrictHostKeyChecking=no "${SSH_USER}@${SSH_HOST}" "
+        cd /home/ubuntu/vertigo-linkedin-monitor
+        docker compose ps
+        docker compose logs --tail 40 bot" || true
+      fi
+      rm -f deploy_key.pem
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  when: manual
