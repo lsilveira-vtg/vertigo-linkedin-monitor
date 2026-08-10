@@ -31,6 +31,13 @@ APPROVER_IDS = {
     int(x) for x in os.getenv("DISCORD_APPROVER_IDS", "").split(",") if x.strip()
 }
 
+# Canais onde o bot aceita comandos. Aceita vários IDs separados por vírgula.
+# Vazio = qualquer canal. Um tópico (thread) é liberado se o seu canal-pai
+# estiver na lista, então basta apontar para o canal do Marketing.
+ALLOWED_CHANNELS = {
+    x.strip() for x in config.DISCORD_CHANNEL_ID.split(",") if x.strip()
+}
+
 # Arquivo de heartbeat lido pelo healthcheck do container. Só é atualizado
 # enquanto o bot está de fato conectado ao gateway — assim um travamento que
 # não mata o processo (deadlock, sessão zumbi) deixa o arquivo envelhecer,
@@ -51,8 +58,14 @@ def _is_approver(user: discord.User) -> bool:
 
 
 def _channel_check(interaction: discord.Interaction) -> bool:
-    cid = config.DISCORD_CHANNEL_ID
-    return not cid or str(interaction.channel_id) == cid
+    if not ALLOWED_CHANNELS:
+        return True
+    # Libera o próprio canal e também tópicos cujo canal-pai esteja autorizado.
+    ids = {str(interaction.channel_id)}
+    parent = getattr(interaction.channel, "parent_id", None)
+    if parent:
+        ids.add(str(parent))
+    return bool(ids & ALLOWED_CHANNELS)
 
 
 def _brl(v: float) -> str:
