@@ -181,6 +181,12 @@ async def rejeitar(interaction: discord.Interaction, id: int):
 
 @client.event
 async def on_ready():
+    # Status/presença: deixa claro que é um bot oficial do Marketing (não malicioso).
+    await client.change_presence(
+        status=discord.Status.online,
+        activity=discord.CustomActivity(name="🟢 Bot do Marketing · monitor de mídia paga LinkedIn"),
+    )
+
     # Se DISCORD_GUILD_ID estiver definido, sincroniza os comandos direto no
     # servidor (aparecem na hora). Caso contrário, sync global (até ~1h p/ propagar).
     guild_id = os.getenv("DISCORD_GUILD_ID", "").strip()
