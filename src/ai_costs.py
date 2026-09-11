@@ -5,9 +5,13 @@ gera nenhuma chamada extra à API. Cada análise é registrada na aba "Custos IA
 da planilha (a memória do gasto entre execuções, já que o GitLab CI é efêmero).
 O rodapé mostra: custo da análise + acumulado do mês vs orçamento de referência.
 """
-from datetime import date, timezone, datetime
+from datetime import date, datetime, timedelta, timezone
 
 from . import config, sheets_client
+
+# Horário de Brasília (UTC-3 fixo — o Brasil não usa mais horário de verão).
+# Registramos os custos neste fuso para a planilha bater com o horário local.
+BRT = timezone(timedelta(hours=-3))
 
 TAB = "Custos IA"
 HEADER = ["Data", "Mês", "Modelo", "Tokens entrada", "Tokens saída", "Custo (US$)"]
@@ -45,7 +49,7 @@ def log_and_summarize(usage, model: str) -> str:
     Nunca interrompe a análise: se a planilha falhar, devolve só o custo da chamada.
     """
     custo = cost_from_usage(usage)
-    hoje = date.today()
+    hoje = datetime.now(BRT).date()
     mes = _month_key(hoje)
     inp = getattr(usage, "input_tokens", 0) or 0
     out = getattr(usage, "output_tokens", 0) or 0
@@ -71,7 +75,7 @@ def log_and_summarize(usage, model: str) -> str:
             if len(r) > 5 and r[1] == mes and r[5]
         )
         acumulado = gasto_mes_anterior + custo
-        agora = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+        agora = datetime.now(BRT).strftime("%Y-%m-%d %H:%M")
         ws.append_row([agora, mes, model, inp, out, round(custo, 4)],
                       value_input_option="USER_ENTERED")
     except Exception as exc:
