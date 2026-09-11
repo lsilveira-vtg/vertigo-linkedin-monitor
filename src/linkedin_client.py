@@ -11,11 +11,51 @@ from . import config
 
 BASE_URL = "https://api.linkedin.com/rest"
 API_VERSION = "202606"
+TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken"
+
+# Access token válido para este processo (renovado uma vez via refresh token).
+_access_token: str | None = None
+
+
+def _get_access_token() -> str:
+    """Devolve um access token válido.
+
+    Se houver refresh token + credenciais do app, gera um token novo a cada
+    processo (o access token do LinkedIn expira em ~60 dias; o refresh token
+    vale ~1 ano). Assim a coleta não quebra mais quando o access token vence.
+    Em caso de falha na renovação, cai no LINKEDIN_ACCESS_TOKEN estático.
+    """
+    global _access_token
+    if _access_token:
+        return _access_token
+
+    if config.LINKEDIN_REFRESH_TOKEN and config.LINKEDIN_CLIENT_ID and config.LINKEDIN_CLIENT_SECRET:
+        try:
+            resp = requests.post(
+                TOKEN_URL,
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": config.LINKEDIN_REFRESH_TOKEN,
+                    "client_id": config.LINKEDIN_CLIENT_ID,
+                    "client_secret": config.LINKEDIN_CLIENT_SECRET,
+                },
+                timeout=30,
+            )
+            resp.raise_for_status()
+            _access_token = resp.json()["access_token"]
+            print("Token LinkedIn renovado via refresh token.")
+            return _access_token
+        except Exception as exc:
+            print(f"  aviso: falha ao renovar token LinkedIn ({exc}); "
+                  "usando LINKEDIN_ACCESS_TOKEN estático.")
+
+    _access_token = config.LINKEDIN_ACCESS_TOKEN
+    return _access_token
 
 
 def _headers() -> dict:
     return {
-        "Authorization": f"Bearer {config.LINKEDIN_ACCESS_TOKEN}",
+        "Authorization": f"Bearer {_get_access_token()}",
         "LinkedIn-Version": API_VERSION,
         "X-Restli-Protocol-Version": "2.0.0",
         "Content-Type": "application/json",
