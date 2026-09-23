@@ -58,4 +58,4 @@ services:
     env_file: .env
     ports:
     - "127.0.0.1:8000"   # só local; o nginx faz o proxy HTTPS
-  restart: unless-stopped
+    restart: unless-stopped
