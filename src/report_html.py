@@ -44,8 +44,8 @@ def build_html_report(period_label: str, campaign_data: list[dict],
     kpis = [
         ("Investimento", _brl(total_invest), f"{len(campaign_data)} campanhas"),
         ("Leads", str(total_leads), "formulários do LinkedIn"),
-        ("CPL geral", _brl(cpl_geral) if cpl_geral else "—", "campanhas de lead"),
-        ("Consumo do teto", (f"{consumo*100:.0f}%" if consumo is not None else "—"),
+        ("CPL geral", _brl(cpl_geral) if cpl_geral else "n/d", "campanhas de lead"),
+        ("Consumo do teto", (f"{consumo*100:.0f}%" if consumo is not None else "n/d"),
          (f"{_brl(total_invest)} / {_brl(teto)}" if teto else "teto não configurado")),
     ]
     kpi_html = "".join(
@@ -55,7 +55,7 @@ def build_html_report(period_label: str, campaign_data: list[dict],
 
     alert = ""
     if over:
-        alert = (f'<div class="alert"><b>⚠️ Orçamento estourado — {consumo*100:.0f}% do teto.</b> '
+        alert = (f'<div class="alert"><b>⚠️ Orçamento acima do teto ({consumo*100:.0f}% do limite).</b> '
                  f'Gasto de {_brl(total_invest)} sobre um teto de {_brl(teto)} no mês.</div>')
 
     rows = ""
@@ -65,9 +65,9 @@ def build_html_report(period_label: str, campaign_data: list[dict],
         traf = c.get("tipo") == "trafego"
         clk = c.get("cliques", 0) or 0
         clk_fmt = f"{clk:,}".replace(",", ".")
-        cpc = _brl2(c["investimento_brl"] / clk) if (traf and clk) else "—"
-        leads = "—" if traf else (c.get("leads", 0) or 0)
-        cpl = "—" if (traf or not c.get("cpl_brl")) else _brl(c["cpl_brl"])
+        cpc = _brl2(c["investimento_brl"] / clk) if (traf and clk) else "n/d"
+        leads = "n/d" if traf else (c.get("leads", 0) or 0)
+        cpl = "n/d" if (traf or not c.get("cpl_brl")) else _brl(c["cpl_brl"])
         tag = ' <span class="t">TRÁFEGO</span>' if traf else ""
         status = STATUS.get(c.get("status", ""), c.get("status", ""))
         rows += (f'<tr><td class="nm"><span style="color:{color}">{emoji}</span> {c["nome"]}{tag}</td>'

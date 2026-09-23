@@ -46,7 +46,7 @@ def evaluate_campaign(c: dict) -> list[Recommendation]:
             campaign_id=c["id"],
             campaign_name=c["name"],
             action="PAUSE",
-            reason=f"Orçamento mensal em {pace:.0%} do limite — risco de estouro",
+            reason=f"Orçamento mensal em {pace:.0%} do limite, risco de passar do teto",
             current_value="ACTIVE",
             proposed_value="PAUSED",
         ))

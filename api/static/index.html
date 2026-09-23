@@ -14,13 +14,7 @@
     --crit-bg:#fde3e3;--good-bg:#dcfce7;--warn-bg:#fdf0d5;
     --shadow:0 1px 2px rgba(20,30,48,.06),0 8px 24px rgba(20,30,48,.05);color-scheme:light;
   }
-  @media(prefers-color-scheme:dark){:root{
-    --bg:#0c1320;--surface:#141d2c;--surface-2:#1b2739;--border:#263349;
-    --text:#e9eef5;--muted:#9aa6b8;--faint:#6b7688;--navy:#2c4c88;--accent:#5f95f6;--accent-weak:#16243c;
-    --good:#4ade80;--good-l:#22c55e;--warn:#fbbf24;--warn-l:#e0a12a;--crit:#f87171;--crit-l:#ef4444;
-    --crit-bg:#3a1b1b;--good-bg:#123021;--warn-bg:#3a2c10;
-    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 26px rgba(0,0,0,.28);color-scheme:dark;
-  }}
+  /* Painel travado em tema claro (fundo branco), independente do modo do sistema. */
   *{box-sizing:border-box}
   [hidden]{display:none!important}
   body{margin:0;background:var(--bg);color:var(--text);
@@ -44,9 +38,9 @@
   .brand{display:flex;align-items:center;gap:12px;margin-right:auto}
   .brand b{font-size:15px;font-weight:800;display:block;line-height:1.1}.brand span{font-size:11.5px;color:var(--muted)}
   .vchip{display:inline-flex;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:6px 11px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
-  .vchip .vlogo{height:20px;width:auto;display:block}
+  .vchip .vlogo{height:28px;width:auto;display:block}
   .brand .vsep{width:1px;height:26px;background:var(--border)}
-  .vchip-lg{padding:12px 18px;border-radius:14px;margin:0 auto 18px}.vchip-lg .vlogo{height:30px}
+  .vchip-lg{padding:16px 22px;border-radius:16px;margin:0 auto 18px}.vchip-lg .vlogo{height:44px}
   .who{font-size:12.5px;color:var(--muted)} .btn{background:var(--surface-2);border:1px solid var(--border);
     border-radius:9px;padding:7px 11px;font:inherit;font-size:13px;cursor:pointer;color:var(--text)}
   main{padding:20px 0 44px} .grid{display:grid;gap:16px}
@@ -221,12 +215,12 @@ function render(){
   const k=DATA.kpis;
   $("#updated").textContent="Período "+DATA.period+" · atualizado "+DATA.updated_at+" · leads = formulários do LinkedIn";
   const over=k.consumo_teto!=null&&k.consumo_teto>1;
-  $("#alert").innerHTML=over?`<div class="alert"><div><b>⚠️ Orçamento estourado — ${Math.round(k.consumo_teto*100)}% do teto.</b><p>Gasto de ${BRL0(DATA.budget.gasto)} sobre um teto de ${BRL0(DATA.budget.teto)} no mês.</p></div></div>`:"";
+  $("#alert").innerHTML=over?`<div class="alert"><div><b>⚠️ Orçamento acima do teto (${Math.round(k.consumo_teto*100)}% do limite).</b><p>Gasto de ${BRL0(DATA.budget.gasto)} sobre um teto de ${BRL0(DATA.budget.teto)} no mês.</p></div></div>`:"";
   const kpis=[
     ["Investimento",BRL0(k.investimento),DATA.campaigns.length+" campanhas",false],
-    ["Leads",k.leads,"formulários do LinkedIn",false],
-    ["CPL geral",BRL0(k.cpl_geral),"campanhas de lead",false],
-    ["Consumo do teto",k.consumo_teto==null?"—":Math.round(k.consumo_teto*100)+"%",DATA.budget.teto?`${BRL0(DATA.budget.gasto)} / ${BRL0(DATA.budget.teto)}`:"teto não configurado",over],
+    ["Leads",k.leads,"Formulários do LinkedIn",false],
+    ["CPL geral",BRL0(k.cpl_geral),"Campanhas de lead",false],
+    ["Consumo do teto",k.consumo_teto==null?NA:Math.round(k.consumo_teto*100)+"%",DATA.budget.teto?`${BRL0(DATA.budget.gasto)} / ${BRL0(DATA.budget.teto)}`:"Teto não configurado",over],
   ];
   $("#kpis").innerHTML=kpis.map(([l,v,s,c])=>`<div class="kpi ${c?'crit':''}"><div class="lab">${l}</div><div class="val num">${v}</div><div class="sub">${s}</div></div>`).join("");
   const mx=Math.max(...DATA.campaigns.map(c=>c.investimento),1);
@@ -240,7 +234,7 @@ function rows(){
   $("#rows").innerHTML=list.map(c=>{
     const traf=c.tipo==="trafego";
     return `<tr><td><span class="cn"><span class="dot" style="background:${HC[c.saude]||'#888'}"></span>${c.nome}${traf?' <span class="t">TRÁFEGO</span>':''}</span></td>
-      <td><span class="pill" style="background:var(--surface-2);color:var(--muted)">${ST[c.status]||c.status||'—'}</span></td>
+      <td><span class="pill" style="background:var(--surface-2);color:var(--muted)">${ST[c.status]||c.status||NA}</span></td>
       <td class="num">${BRL0(c.investimento)}</td><td class="num">${traf?NA:c.leads}</td>
       <td class="num">${BRL0(c.cpl)}</td><td class="num">${(c.cliques||0).toLocaleString("pt-BR")}</td>
       <td class="num">${BRL2(c.cpc)}</td><td class="num">${PCT(c.ctr)}</td></tr>`;

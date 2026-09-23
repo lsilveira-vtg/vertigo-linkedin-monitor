@@ -6,9 +6,31 @@ Acrescenta análise contextual, cruzamento entre campanhas e padrões não previ
 nas regras. Não executa nenhuma ação — é consultiva.
 """
 import json
+import re
 
 from . import config
 from .analyst import Analysis, CampaignVerdict
+
+
+def _limpar(texto: str) -> str:
+    """Garante as regras de escrita mesmo que a IA escorregue: sem travessão e
+    sem 'estourou/estourado' (usa 'acima do teto/limite')."""
+    if not texto:
+        return texto
+    t = texto
+    # travessão/meia-risca como pontuação -> vírgula; meia-risca em faixas (22–40) -> hífen
+    t = t.replace(" — ", ", ").replace(" – ", ", ").replace("—", ", ")
+    t = re.sub(r"(?<=\d)\s*–\s*(?=\d)", "-", t)  # 22–40 -> 22-40
+    t = t.replace("–", ", ")
+    # terminologia de orçamento
+    t = re.sub(r"estourou o teto", "ficou acima do teto", t, flags=re.I)
+    t = re.sub(r"estourou o limite", "ficou acima do limite", t, flags=re.I)
+    t = re.sub(r"estourou", "ficou acima do teto", t, flags=re.I)
+    t = re.sub(r"estourad[oa]s?", "acima do teto", t, flags=re.I)
+    t = re.sub(r"estourar", "passar do teto", t, flags=re.I)
+    t = re.sub(r"estouro", "excesso", t, flags=re.I)
+    t = re.sub(r" {2,}", " ", t).replace(" ,", ",").replace(",,", ",")
+    return t.strip()
 
 SYSTEM_PROMPT = """\
 Você é um analista de mídia paga sênior especializado em LinkedIn Ads, com mais \
@@ -43,7 +65,14 @@ Comporte-se como um analista sênior de verdade:
   ÚLTIMO RECURSO — só depois de tentativas de otimização não surtirem efeito (ex.: 1–2
   semanas), ou para estancar um gasto claramente perdido. Tom construtivo, não agressivo:
   proponha o caminho de melhoria, não apenas o corte.
-- Recomende ações concretas; não execute nem prometa executar — aprovação é humana.
+- Recomende ações concretas; não execute nem prometa executar. A aprovação é humana.
+
+REGRAS DE ESCRITA (obrigatórias):
+- NUNCA use travessão ("—") nem meia-risca ("–") como pontuação. Use vírgula, ponto, \
+dois-pontos ou parênteses no lugar.
+- Ao descrever gasto acima do teto/limite, escreva "acima do teto" ou "acima do limite". \
+NUNCA use "estourou", "estourado", "estourar" nem "estouro".
+- Comece cada frase e cada bullet com letra maiúscula.
 
 Responda em português do Brasil, profissional, objetivo e em bullets."""
 
@@ -105,9 +134,17 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
         print(f"  aviso: contador de custo falhou: {exc}")
 
     return Analysis(
-        resumo_executivo=data["resumo_executivo"],
-        campanhas=[CampaignVerdict(**c) for c in data["campanhas"]],
-        acoes_prioritarias=data["acoes_prioritarias"],
+        resumo_executivo=_limpar(data["resumo_executivo"]),
+        campanhas=[
+            CampaignVerdict(
+                nome=c["nome"],
+                diagnostico=_limpar(c["diagnostico"]),
+                saude=c["saude"],
+                recomendacao=_limpar(c["recomendacao"]),
+            )
+            for c in data["campanhas"]
+        ],
+        acoes_prioritarias=[_limpar(a) for a in data["acoes_prioritarias"]],
         rodape=rodape,
     )
 
@@ -150,5 +187,5 @@ def answer_question(question: str, campaign_data: list[dict], budgets: dict | No
         ai_costs.log_and_summarize(response.usage, config.ANALYST_MODEL)
     except Exception as exc:
         print(f"  aviso: contador de custo falhou: {exc}")
-    return texto or "Não consegui gerar uma resposta agora."
+    return _limpar(texto) or "Não consegui gerar uma resposta agora."
 

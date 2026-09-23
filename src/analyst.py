@@ -240,14 +240,14 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
         elif st["teto"] and st["consumo"] is not None and st["consumo"] >= 0.90:
             budget_alerts.append(
                 f"Conta em {_pct(st['consumo'])} do teto de {_brl(st['teto'])} "
-                f"({_brl(st['gasto'])}). Atenção para não estourar."
+                f"({_brl(st['gasto'])}). Atenção para não passar do teto."
             )
         for c in campaign_data:
             budget_alerts += budget.campaign_alerts(
                 c["nome"], c.get("investimento_brl", 0) or 0, ref_date
             )
         if st["teto"]:
-            resumo += f" Teto do mês: {_brl(st['teto'])} (consumo {_pct(st['consumo']) if st['consumo'] else '—'})."
+            resumo += f" Teto do mês: {_brl(st['teto'])} (consumo {_pct(st['consumo']) if st['consumo'] else 'n/d'})."
 
     # Ações prioritárias: orçamento primeiro (mais sensível), depois críticas e atenção
     acoes: list[str] = list(budget_alerts)
