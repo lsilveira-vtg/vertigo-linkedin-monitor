@@ -88,6 +88,7 @@ cpl_historico:
 
 deploy-bot:
   stage: deploy
+  needs: []
   image:
     name: alpine:3.20
   tags:
@@ -150,4 +151,6 @@ deploy-bot:
 
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+      when: always
     - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always
