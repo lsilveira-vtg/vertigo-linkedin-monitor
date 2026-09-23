@@ -1,0 +1,4 @@
+# Dependências extras só da API do dashboard (não usadas pelos jobs de coleta/report).
+# O container da API instala requirements.txt + este arquivo.
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0

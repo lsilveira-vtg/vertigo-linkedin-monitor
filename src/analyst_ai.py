@@ -111,3 +111,44 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
         rodape=rodape,
     )
 
+
+ASK_SYSTEM = SYSTEM_PROMPT + (
+    "\n\nAgora você está respondendo a UMA pergunta do time no chat do painel. "
+    "Responda de forma curta e direta (2-6 frases ou poucos bullets), sempre com base "
+    "nos dados fornecidos. Se a pergunta não puder ser respondida com os dados, diga isso. "
+    "Não invente números."
+)
+
+
+def answer_question(question: str, campaign_data: list[dict], budgets: dict | None = None) -> str:
+    """Responde uma pergunta ao vivo (chat do dashboard) usando os dados atuais.
+
+    Usa a IA se houver ANTHROPIC_API_KEY; senão devolve um aviso simples.
+    O custo é registrado normalmente (aba Custos IA).
+    """
+    if not config.ANTHROPIC_API_KEY:
+        return ("A resposta ao vivo por IA está indisponível (sem chave configurada). "
+                "Consulte os KPIs e a tabela de campanhas no painel.")
+
+    import anthropic
+    client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    payload = {"campanhas": campaign_data, "orcamento": budgets or {}}
+    user_msg = (f"Pergunta: {question}\n\nDados atuais:\n```json\n"
+                f"{json.dumps(payload, ensure_ascii=False)}\n```")
+
+    with client.messages.stream(
+        model=config.ANALYST_MODEL,
+        max_tokens=1200,
+        system=ASK_SYSTEM,
+        messages=[{"role": "user", "content": user_msg}],
+    ) as stream:
+        response = stream.get_final_message()
+
+    texto = "".join(b.text for b in response.content if b.type == "text").strip()
+    try:
+        from . import ai_costs
+        ai_costs.log_and_summarize(response.usage, config.ANALYST_MODEL)
+    except Exception as exc:
+        print(f"  aviso: contador de custo falhou: {exc}")
+    return texto or "Não consegui gerar uma resposta agora."
+
