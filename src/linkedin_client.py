@@ -62,6 +62,28 @@ def _headers() -> dict:
     }
 
 
+def _request(method: str, url: str, *, extra_headers: dict | None = None, **kwargs):
+    """Faz a requisição e, se tomar 401 (token expirado durante um processo
+    longo como o bot), renova o token uma vez e tenta de novo. Isso mantém o
+    bot funcionando por semanas sem reinício, mesmo quando o access token vence.
+    """
+    global _access_token
+
+    def _do():
+        h = _headers()
+        if extra_headers:
+            h.update(extra_headers)
+        return requests.request(method, url, headers=h, timeout=30, **kwargs)
+
+    resp = _do()
+    if resp.status_code == 401:
+        print("  401 do LinkedIn — renovando token e tentando novamente.")
+        _access_token = None  # força nova renovação via refresh token
+        resp = _do()
+    resp.raise_for_status()
+    return resp
+
+
 def get_campaigns() -> list[dict]:
     """Lista todas as campanhas da conta (com paginacao)."""
     url = f"{BASE_URL}/adAccounts/{config.LINKEDIN_ACCOUNT_ID}/adCampaigns"
@@ -71,8 +93,7 @@ def get_campaigns() -> list[dict]:
         params = {"q": "search", "pageSize": 1000}
         if page_token:
             params["pageToken"] = page_token
-        resp = requests.get(url, headers=_headers(), params=params, timeout=30)
-        resp.raise_for_status()
+        resp = _request("GET", url, params=params)
         data = resp.json()
         campaigns.extend(data.get("elements", []))
         page_token = data.get("metadata", {}).get("nextPageToken")
@@ -97,9 +118,7 @@ def get_creative(creative_id: str) -> dict:
     """
     enc = f"urn%3Ali%3AsponsoredCreative%3A{creative_id}"
     url = f"{BASE_URL}/adAccounts/{config.LINKEDIN_ACCOUNT_ID}/creatives/{enc}"
-    resp = requests.get(url, headers=_headers(), timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+    return _request("GET", url).json()
 
 
 def post_url(share_urn: str) -> str:
@@ -130,22 +149,18 @@ def get_analytics(start: date, end: date, pivot: str = "CAMPAIGN") -> list[dict]
         f"&fields={','.join(ANALYTICS_FIELDS)}"
     )
     url = f"{BASE_URL}/adAnalytics?{query}"
-    resp = requests.get(url, headers=_headers(), timeout=30)
-    resp.raise_for_status()
-    return resp.json().get("elements", [])
+    return _request("GET", url).json().get("elements", [])
 
 
 # --- Acoes (executadas somente apos aprovacao) ---
 
 def _update_campaign(campaign_id: str, payload: dict) -> None:
     url = f"{BASE_URL}/adAccounts/{config.LINKEDIN_ACCOUNT_ID}/adCampaigns/{campaign_id}"
-    resp = requests.post(
-        url,
-        headers={**_headers(), "X-RestLi-Method": "PARTIAL_UPDATE"},
+    _request(
+        "POST", url,
+        extra_headers={"X-RestLi-Method": "PARTIAL_UPDATE"},
         json={"patch": {"$set": payload}},
-        timeout=30,
     )
-    resp.raise_for_status()
 
 
 def pause_campaign(campaign_id: str) -> None:
