@@ -42,9 +42,6 @@ def build_report_for_period(start: date, end: date) -> str:
 
     reports: list[CampaignReport] = []
     for campaign_id, metrics in analytics.items():
-        # Se ha campanhas configuradas, o report mostra somente elas (na ordem do config).
-        if CAMPAIGN_CONFIG and str(campaign_id) not in CAMPAIGN_CONFIG:
-            continue
         cfg = CAMPAIGN_CONFIG.get(str(campaign_id), {})
         meta = campaigns_meta.get(campaign_id, {})
         ctype = cfg.get("type", "leads")
@@ -53,9 +50,13 @@ def build_report_for_period(start: date, end: date) -> str:
             emoji=cfg.get("emoji", "📊"),
             name=cfg.get("display", meta.get("name", str(campaign_id))),
             note=cfg.get("note", ""),
+            kind=ctype,
             invest=metrics.get("costInLocalCurrency", 0),
         )
-        if ctype == "branding":
+        if ctype == "trafego":
+            rep.clicks = int(metrics.get("clicks", 0))
+            rep.impressions = int(metrics.get("impressions", 0))
+        elif ctype == "branding":
             rep.reactions = int(metrics.get("likes", 0))
             rep.comments = int(metrics.get("comments", 0))
             rep.shares = int(metrics.get("shares", 0))
@@ -95,8 +96,6 @@ def collect_campaign_data(start: date, end: date) -> list[dict]:
 
     out: list[dict] = []
     for campaign_id, m in analytics.items():
-        if CAMPAIGN_CONFIG and str(campaign_id) not in CAMPAIGN_CONFIG:
-            continue
         cfg = CAMPAIGN_CONFIG.get(str(campaign_id), {})
         meta = campaigns_meta.get(campaign_id, {})
         invest = round(m.get("costInLocalCurrency", 0), 2)

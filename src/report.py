@@ -7,6 +7,7 @@ class CampaignReport:
     emoji: str
     name: str
     note: str = ""          # ex: "campanha de branding/thought leadership"
+    kind: str = "leads"     # leads | branding | inmail | trafego
     invest: float = 0.0
     leads: int | None = None
     mqls: int | None = None
@@ -32,6 +33,13 @@ def _cpl(invest: float, leads: int | None) -> str:
     return _brl(invest / leads)
 
 
+def _cpc(invest: float, clicks: int | None) -> str:
+    if not clicks:
+        return "—"
+    v = invest / clicks
+    return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def format_campaign(c: CampaignReport) -> str:
     lines = []
     title = f"{c.emoji} {c.name}"
@@ -39,7 +47,12 @@ def format_campaign(c: CampaignReport) -> str:
         title += f" — {c.note}"
     lines.append(title)
 
-    if c.sends is not None:
+    if c.kind == "trafego":
+        # Campanha de tráfego/cliques — foco em cliques, CPC, impressões e CTR
+        ctr = (c.clicks or 0) / c.impressions if c.impressions else 0
+        lines.append(f"Invest: {_brl(c.invest)} | Cliques: {c.clicks or 0} | CPC: {_cpc(c.invest, c.clicks)}")
+        lines.append(f"Impressões: {c.impressions or 0:,} | CTR: {ctr:.2%}".replace(",", "."))
+    elif c.sends is not None:
         # Campanha de InMail
         cap = f" / {_brl(c.budget_cap)}" if c.budget_cap else ""
         pct = f" ({c.invest / c.budget_cap:.0%})" if c.budget_cap else ""

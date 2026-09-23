@@ -41,6 +41,11 @@ def _brl(v: float) -> str:
     return f"R$ {v:,.0f}".replace(",", ".")
 
 
+def _brl2(v: float) -> str:
+    """Formata em reais com centavos (para valores pequenos, ex.: CPC)."""
+    return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def _pct(v: float) -> str:
     return f"{v * 100:.2f}%"
 
@@ -143,6 +148,37 @@ def _analisar_inmail(c: dict) -> CampaignVerdict:
     return CampaignVerdict(c["nome"], diag, "boa", "Manter e acompanhar a conversão.")
 
 
+def _analisar_trafego(c: dict) -> CampaignVerdict:
+    """Campanha de tráfego/cliques: avalia por CPC e CTR, não por leads/CPL."""
+    invest = c.get("investimento_brl", 0) or 0
+    clicks = c.get("cliques", 0) or 0
+    impr = c.get("impressoes", 0) or 0
+    ctr = c.get("ctr")
+    if clicks == 0:
+        return CampaignVerdict(
+            c["nome"],
+            f"Sem cliques no período, com gasto de {_brl(invest)}.",
+            "atencao",
+            "Revisar criativo/gancho e segmentação para gerar tráfego.",
+        )
+    cpc = invest / clicks
+    diag = f"Gerou {clicks} cliques a um CPC de {_brl2(cpc)}"
+    if ctr is not None:
+        diag += f" e CTR de {_pct(ctr)}"
+    impr_fmt = f"{impr:,}".replace(",", ".")
+    diag += f", sobre {impr_fmt} impressões."
+    if ctr is not None and ctr >= CTR_BOM:
+        rec = "Bom volume de tráfego — manter e, se houver verba, escalar gradualmente monitorando o CPC."
+        saude = "boa"
+    elif ctr is not None and ctr < CTR_BAIXO:
+        rec = "CTR baixo encarece o clique — testar novos criativos/ganchos e refinar segmentação para baixar o CPC."
+        saude = "atencao"
+    else:
+        rec = "Manter e acompanhar o CPC; testar criativos para melhorar o custo por clique."
+        saude = "boa"
+    return CampaignVerdict(c["nome"], diag, saude, rec)
+
+
 def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None = None,
             ref_date=None) -> Analysis:
     """Analisa os dados das campanhas e retorna o veredito estruturado.
@@ -157,13 +193,18 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
             verdicts.append(_analisar_branding(c))
         elif tipo == "inmail":
             verdicts.append(_analisar_inmail(c))
+        elif tipo == "trafego":
+            verdicts.append(_analisar_trafego(c))
         else:
             verdicts.append(_analisar_leads(c))
 
     # Resumo executivo: panorama + destaque
     total_invest = sum(c.get("investimento_brl", 0) or 0 for c in campaign_data)
-    total_leads = sum(c.get("leads", 0) or 0 for c in campaign_data)
-    cpl_geral = total_invest / total_leads if total_leads else None
+    # CPL geral considera só campanhas de lead (tráfego/branding não miram formulário).
+    _lead_camps = [c for c in campaign_data if c.get("tipo", "leads") not in ("trafego", "branding")]
+    _invest_leads = sum(c.get("investimento_brl", 0) or 0 for c in _lead_camps)
+    total_leads = sum(c.get("leads", 0) or 0 for c in _lead_camps)
+    cpl_geral = _invest_leads / total_leads if total_leads else None
     criticas = [v for v in verdicts if v.saude == "critica"]
     atencao = [v for v in verdicts if v.saude == "atencao"]
 
