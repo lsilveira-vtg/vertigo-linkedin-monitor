@@ -86,12 +86,18 @@
   .msg{max-width:88%;padding:10px 13px;border-radius:13px;font-size:13px;line-height:1.45;white-space:pre-wrap}
   .msg.u{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
   .msg.a{align-self:flex-start;background:var(--surface-2);border:1px solid var(--border);border-bottom-left-radius:4px}
-  .suggest{display:flex;gap:7px;flex-wrap:wrap;padding:0 16px 10px}
-  .suggest button{font:inherit;font-size:12px;border:1px solid var(--border);background:var(--surface);border-radius:20px;padding:6px 11px;cursor:pointer;color:var(--text)}
+  .suggest{display:flex;gap:8px;flex-wrap:wrap;padding:4px 16px 12px}
+  .suggest button{font:inherit;font-size:12.5px;font-weight:600;border:1px solid color-mix(in srgb,var(--accent) 32%,var(--border));
+    background:var(--accent-weak);border-radius:20px;padding:7px 13px;cursor:pointer;color:var(--accent);
+    display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s}
+  .suggest button::before{content:"›";font-weight:800;opacity:.7}
+  .suggest button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .na{color:var(--faint)}
   .composer{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}
   .composer input{flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font:inherit;font-size:13px;color:var(--text)}
   .composer button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:0 15px;font-weight:600;cursor:pointer}
-  .skel{color:var(--faint);padding:40px;text-align:center}
+  .skel{grid-column:1/-1;color:var(--muted);padding:34px;text-align:center}
+  .skel .btn{margin-top:2px}
   @media(max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
 </style>
 </head>
@@ -137,7 +143,7 @@
     </section>
     <section class="card chat">
       <h2 style="padding:14px 16px 0">Pergunte ao agente</h2>
-      <div class="body" id="chat"><div class="msg a">Oi! Posso responder sobre gasto, CPL, campanhas e orçamento — com base nos dados atuais. O que você quer saber?</div></div>
+      <div class="body" id="chat"><div class="msg a">Oi! Posso responder sobre gasto, CPL, campanhas e orçamento, com base nos dados atuais. O que você quer saber?</div></div>
       <div class="suggest" id="suggest">
         <button>Qual campanha cortar primeiro?</button>
         <button>Como está o orçamento?</button>
@@ -156,9 +162,10 @@ function jwtPayload(t){
   b+="===".slice((b.length+3)%4);
   return JSON.parse(decodeURIComponent(escape(atob(b))));
 }
-const BRL0=n=>n==null?"—":"R$ "+Math.round(n).toLocaleString("pt-BR");
-const BRL2=n=>n==null?"—":"R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
-const PCT=n=>n==null?"—":(n*100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";
+const NA='<span class="na">n/d</span>';
+const BRL0=n=>n==null?NA:"R$ "+Math.round(n).toLocaleString("pt-BR");
+const BRL2=n=>n==null?NA:"R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const PCT=n=>n==null?NA:(n*100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";
 const HC={boa:"var(--good-l)",atencao:"var(--warn-l)",critica:"var(--crit-l)"};
 const HE={boa:"🟢",atencao:"🟡",critica:"🔴"};
 const ST={ACTIVE:"Ativa",PAUSED:"Pausada",COMPLETED:"Concluída",DRAFT:"Rascunho"};
@@ -166,7 +173,7 @@ const ST={ACTIVE:"Ativa",PAUSED:"Pausada",COMPLETED:"Concluída",DRAFT:"Rascunho
 async function api(path, opts={}){
   const r=await fetch(path,{...opts,headers:{Authorization:"Bearer "+TOKEN,...(opts.headers||{})}});
   if(r.status===401||r.status===403){signout(r.status===403?"Acesso restrito à Vertigo.":"Sessão expirada, entre novamente.");throw new Error("auth");}
-  if(!r.ok)throw new Error("HTTP "+r.status);
+  if(!r.ok){let d="";try{d=(await r.json()).detail||"";}catch(e){}throw new Error("Erro "+r.status+(d?" · "+d:""));}
   return r.json();
 }
 
@@ -194,8 +201,16 @@ async function enter(){
 
 /* ---- dashboard ---- */
 async function load(){
+  $("#alert").innerHTML="";
   $("#kpis").innerHTML='<div class="skel">Carregando dados…</div>';
-  try{DATA=await api("/api/dashboard");}catch(e){if(e.message!=="auth")$("#kpis").innerHTML='<div class="skel">Erro ao carregar.</div>';return;}
+  ["bars","resumo","acoes","rows"].forEach(id=>$("#"+id).innerHTML="");
+  try{DATA=await api("/api/dashboard");}
+  catch(e){
+    if(e.message==="auth")return;
+    $("#kpis").innerHTML=`<div class="skel">Não consegui carregar os dados agora.<div style="font-size:12px;margin:6px 0 12px;color:var(--faint)">${e.message}</div><button class="btn" id="retry">Tentar de novo</button></div>`;
+    $("#retry").onclick=load;
+    return;
+  }
   render();
 }
 function render(){
@@ -222,8 +237,8 @@ function rows(){
     const traf=c.tipo==="trafego";
     return `<tr><td><span class="cn"><span class="dot" style="background:${HC[c.saude]||'#888'}"></span>${c.nome}${traf?' <span class="t">TRÁFEGO</span>':''}</span></td>
       <td><span class="pill" style="background:var(--surface-2);color:var(--muted)">${ST[c.status]||c.status||'—'}</span></td>
-      <td class="num">${BRL0(c.investimento)}</td><td class="num">${traf?'—':c.leads}</td>
-      <td class="num">${BRL0(c.cpl)}</td><td class="num">${c.cliques.toLocaleString("pt-BR")}</td>
+      <td class="num">${BRL0(c.investimento)}</td><td class="num">${traf?NA:c.leads}</td>
+      <td class="num">${BRL0(c.cpl)}</td><td class="num">${(c.cliques||0).toLocaleString("pt-BR")}</td>
       <td class="num">${BRL2(c.cpc)}</td><td class="num">${PCT(c.ctr)}</td></tr>`;
   }).join("")||'<tr><td colspan="8" style="text-align:center;color:var(--faint);padding:24px">Nenhuma campanha neste filtro.</td></tr>';
 }
