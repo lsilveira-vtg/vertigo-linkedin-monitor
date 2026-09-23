@@ -1,16 +1,25 @@
-# Container dedicado da API do dashboard (separado do bot).
-# Sobe o FastAPI com uvicorn na porta interna 8000; o nginx faz HTTPS + proxy.
 FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    TZ=America/Sao_Paulo
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tzdata ca-certificates curl \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Dependências: as do agente + as extras da API (fastapi/uvicorn).
 COPY requirements.txt requirements-api.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-api.txt
+RUN pip install -r requirements.txt -r requirements-api.txt
 
-COPY . .
+COPY src/ ./src/
+COPY api/ ./api/
+
+RUN useradd --create-home --uid 10002 apiuser && chown -R apiuser:apiuser /app
+USER apiuser
 
 EXPOSE 8000
 
-# Porta configurável por env (default 8000).
-CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${API_PORT:-8000}"]
+CMD ["sh", "-c", "exec uvicorn api.main:app --host 0.0.0.0 --port ${API_PORT:-8000} --workers 1 --proxy-headers --forwarded-allow-ips='*'"]
