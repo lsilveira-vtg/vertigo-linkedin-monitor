@@ -54,6 +54,18 @@
   .kpi .val{font-size:29px;font-weight:800;letter-spacing:-.02em;margin-top:7px;line-height:1}
   .kpi .sub{font-size:12px;color:var(--muted);margin-top:6px} .kpi.crit .val{color:var(--crit)}
   .two{grid-template-columns:1.15fr 1fr;margin-bottom:16px}
+  .charts{grid-template-columns:1fr 1fr;margin-bottom:16px}
+  .charts .chart-wide{grid-column:1/-1}
+  .chart-svg{width:100%;height:auto;display:block;overflow:visible}
+  .chart-legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:12px;font-size:12px;color:var(--muted)}
+  .chart-legend span{display:inline-flex;align-items:center;gap:6px}
+  .chart-legend i{width:10px;height:10px;border-radius:3px;flex:none}
+  .chart-empty{color:var(--faint);font-size:13px;padding:22px 0;text-align:center}
+  .cpl-row{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:12.5px}
+  .cpl-row .nm{width:120px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cpl-row .tk{flex:1;height:20px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+  .cpl-row .fl{height:100%;border-radius:6px}
+  .cpl-row .vl{width:66px;text-align:right;flex:none;font-variant-numeric:tabular-nums;font-weight:600}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
   .card h2{font-size:14px;font-weight:700;margin:0;padding:14px 16px 0}
   .card .body{padding:14px 16px 16px}
@@ -95,7 +107,7 @@
   .composer button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:0 15px;font-weight:600;cursor:pointer}
   .skel{grid-column:1/-1;color:var(--muted);padding:34px;text-align:center}
   .skel .btn{margin-top:2px}
-  @media(max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
+  @media(max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.charts{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -129,6 +141,11 @@
     <section class="grid two">
       <div class="card"><h2>Gasto por campanha</h2><div class="body" id="bars"></div></div>
       <div class="card analysis"><h2>Análise do agente</h2><div class="body"><p id="resumo"></p><div id="acoes"></div></div></div>
+    </section>
+    <section class="grid charts">
+      <div class="card chart-wide"><h2>Gasto x teto ao longo do mês</h2><div class="body" id="chartPace"></div></div>
+      <div class="card"><h2>CPL por campanha</h2><div class="body" id="chartCpl"></div></div>
+      <div class="card"><h2>Distribuição do gasto</h2><div class="body" id="chartDonut"></div></div>
     </section>
     <section class="card" style="margin-bottom:16px">
       <h2 style="padding:14px 16px 12px">Campanhas</h2>
@@ -227,7 +244,71 @@ function render(){
   $("#bars").innerHTML=DATA.campaigns.map(c=>`<div class="bar-row"><span class="nm" title="${c.nome}">${c.nome.split(" - ")[0]}</span><div class="bar-track"><div class="bar-fill" style="width:${(c.investimento/mx*100).toFixed(1)}%"></div></div><span class="vl">${BRL0(c.investimento)}</span></div>`).join("");
   $("#resumo").textContent=DATA.analysis.resumo;
   $("#acoes").innerHTML=DATA.analysis.acoes.map((a,i)=>`<div class="act"><span class="n">${i+1}</span><span>${a}</span></div>`).join("");
+  charts();
   rows();
+}
+// ---------- gráficos (SVG próprio, sem biblioteca) ----------
+const PALETTE=["#2f6bd8","#1f3864","#2c9c8f","#e0a12a","#b45309","#8a6bd8","#6b7688","#c05a5a"];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const shortName=n=>{const a=String(n).split(" - ");return a[0].length>=6?a[0]:a.slice(0,2).join(" · ");};
+function charts(){chartPace();chartCpl();chartDonut();}
+
+function chartPace(){
+  const el=$("#chartPace"),s=DATA.serie_diaria||[],b=DATA.budget||{};
+  const teto=b.teto, dim=b.dias_no_mes||(s.length?s[s.length-1].dia:30);
+  if(!s.length){el.innerHTML='<div class="chart-empty">Sem série diária ainda (a curva aparece após a primeira coleta do mês).</div>';return;}
+  const W=680,H=230,pl=52,pr=16,pt=14,pb=26,iw=W-pl-pr,ih=H-pt-pb;
+  const last=s[s.length-1], gasto=last.acumulado, diaAtual=last.dia;
+  const proj = diaAtual>0 ? gasto/diaAtual*dim : gasto;
+  const ymax=Math.max(teto||0,gasto,proj)*1.12||1;
+  const x=d=>pl+(d-1)/(dim-1||1)*iw, y=v=>pt+ih-(v/ymax)*ih;
+  const pts=s.map(p=>`${x(p.dia).toFixed(1)},${y(p.acumulado).toFixed(1)}`).join(" ");
+  const area=`${pl},${pt+ih} ${pts} ${x(diaAtual).toFixed(1)},${pt+ih}`;
+  // ticks Y: 0, teto, ymax
+  const yticks=[0]; if(teto) yticks.push(teto); yticks.push(Math.round(ymax));
+  const gy=yticks.map(v=>`<line x1="${pl}" y1="${y(v).toFixed(1)}" x2="${W-pr}" y2="${y(v).toFixed(1)}" style="stroke:var(--border)" stroke-width="1"/><text x="${pl-8}" y="${(y(v)+3.5).toFixed(1)}" text-anchor="end" style="fill:var(--faint)" font-size="10.5">${BRL0(v).replace("R$ ","")}</text>`).join("");
+  const xt=[1,Math.ceil(dim/2),dim].map(d=>`<text x="${x(d).toFixed(1)}" y="${H-8}" text-anchor="middle" style="fill:var(--faint)" font-size="10.5">${d}</text>`).join("");
+  const tetoLine = teto?`<line x1="${pl}" y1="${y(teto).toFixed(1)}" x2="${W-pr}" y2="${y(teto).toFixed(1)}" style="stroke:var(--crit)" stroke-width="1.5" stroke-dasharray="5 4"/><text x="${W-pr}" y="${(y(teto)-6).toFixed(1)}" text-anchor="end" style="fill:var(--crit)" font-size="10.5" font-weight="700">teto ${BRL0(teto)}</text>`:"";
+  const projLine = (teto && diaAtual<dim)?`<line x1="${x(diaAtual).toFixed(1)}" y1="${y(gasto).toFixed(1)}" x2="${x(dim).toFixed(1)}" y2="${y(proj).toFixed(1)}" style="stroke:var(--accent)" stroke-width="2" stroke-dasharray="4 4" opacity="0.7"/><circle cx="${x(dim).toFixed(1)}" cy="${y(proj).toFixed(1)}" r="3.5" style="fill:var(--accent)" opacity="0.7"/>`:"";
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="chart-svg" preserveAspectRatio="xMidYMid meet">
+    ${gy}<polygon points="${area}" style="fill:var(--accent)" opacity="0.10"/>
+    <polyline points="${pts}" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${projLine}${tetoLine}${xt}
+    <circle cx="${x(diaAtual).toFixed(1)}" cy="${y(gasto).toFixed(1)}" r="4" style="fill:var(--accent)"/>
+  </svg>
+  <div class="chart-legend"><span><i style="background:var(--accent)"></i>Gasto acumulado (dia ${diaAtual})</span>${teto?`<span><i style="background:var(--crit)"></i>Teto do mês</span>`:""}${(teto&&diaAtual<dim)?`<span><i style="background:var(--accent);opacity:.6"></i>Projeção fim do mês: ${BRL0(proj)}</span>`:""}</div>`;
+}
+
+function chartCpl(){
+  const el=$("#chartCpl");
+  const cs=DATA.campaigns.filter(c=>c.cpl!=null&&c.tipo!=="trafego").sort((a,b)=>a.cpl-b.cpl);
+  if(!cs.length){el.innerHTML='<div class="chart-empty">Sem campanhas de lead com CPL neste período.</div>';return;}
+  const mx=Math.max(...cs.map(c=>c.cpl)), media=cs.reduce((s,c)=>s+c.cpl,0)/cs.length;
+  el.innerHTML=cs.map(c=>{
+    const col=c.cpl<=media?"var(--good-l)":(c.cpl<=media*1.3?"var(--warn-l)":"var(--crit-l)");
+    return `<div class="cpl-row"><span class="nm" title="${esc(c.nome)}">${esc(shortName(c.nome))}</span><div class="tk"><div class="fl" style="width:${(c.cpl/mx*100).toFixed(1)}%;background:${col}"></div></div><span class="vl">${BRL0(c.cpl)}</span></div>`;
+  }).join("")+`<div class="chart-legend"><span>Média das campanhas de lead: <b style="color:var(--text)">${BRL0(media)}</b></span></div>`;
+}
+
+function chartDonut(){
+  const el=$("#chartDonut");
+  const cs=DATA.campaigns.filter(c=>c.investimento>0).sort((a,b)=>b.investimento-a.investimento);
+  const total=cs.reduce((s,c)=>s+c.investimento,0);
+  if(!total){el.innerHTML='<div class="chart-empty">Sem gasto registrado.</div>';return;}
+  const cx=90,cy=90,r=70,sw=26,C=2*Math.PI*r; let off=0;
+  const segs=cs.map((c,i)=>{
+    const frac=c.investimento/total, len=frac*C, col=PALETTE[i%PALETTE.length];
+    const s=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    off+=len; return s;
+  }).join("");
+  const leg=cs.map((c,i)=>`<span><i style="background:${PALETTE[i%PALETTE.length]}"></i>${esc(shortName(c.nome))} · ${Math.round(c.investimento/total*100)}%</span>`).join("");
+  el.innerHTML=`<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <svg viewBox="0 0 180 180" style="width:150px;height:150px;flex:none">${segs}
+      <text x="${cx}" y="${cy-4}" text-anchor="middle" style="fill:var(--text)" font-size="17" font-weight="800">${BRL0(total)}</text>
+      <text x="${cx}" y="${cy+14}" text-anchor="middle" style="fill:var(--faint)" font-size="11">total</text>
+    </svg>
+    <div class="chart-legend" style="flex-direction:column;gap:7px;margin-top:0">${leg}</div>
+  </div>`;
 }
 function rows(){
   const list=DATA.campaigns.filter(c=>filter==="all"||c.saude===filter);

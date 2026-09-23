@@ -3,12 +3,58 @@
 Reúne, num único dict, o que o painel precisa: KPIs, orçamento, tabela de
 campanhas e a análise do agente. Reaproveita a coleta e o analista existentes.
 """
+import calendar
 from datetime import date, datetime, timedelta, timezone
 
 from . import analyst, budget
 from .report_builder import collect_campaign_data
 
 BRT = timezone(timedelta(hours=-3))
+
+
+def _num(v) -> float:
+    """Converte um valor da planilha (número ou texto pt-BR/en) em float."""
+    s = str(v).strip().replace("R$", "").replace(" ", "")
+    if not s:
+        return 0.0
+    if "," in s and "." in s:
+        s = s.replace(".", "").replace(",", ".")   # 1.234,56 -> 1234.56
+    elif "," in s:
+        s = s.replace(",", ".")                      # 882,59 -> 882.59
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
+def _serie_diaria(start: date, end: date) -> list[dict]:
+    """Gasto acumulado por dia do mês, lido da aba 'Campanhas' da planilha.
+
+    Retorna [{'dia': 1, 'acumulado': 123.45}, ...] do dia 1 até `end`. Se a
+    planilha não estiver acessível, devolve [] (o gráfico simplesmente some).
+    """
+    try:
+        from .sheets_client import open_sheet
+        linhas = open_sheet().worksheet("Campanhas").get_all_values()[1:]
+    except Exception as exc:
+        print(f"  aviso: série diária indisponível: {exc}")
+        return []
+    por_dia: dict[date, float] = {}
+    for r in linhas:
+        try:
+            d = date.fromisoformat((r[0] or "").strip())
+        except (ValueError, IndexError, AttributeError):
+            continue
+        if not (start <= d <= end):
+            continue
+        inv = _num(r[2]) if len(r) > 2 else 0.0
+        por_dia[d] = por_dia.get(d, 0.0) + inv
+    serie, acc, d = [], 0.0, start
+    while d <= end:
+        acc += por_dia.get(d, 0.0)
+        serie.append({"dia": d.day, "acumulado": round(acc, 2)})
+        d += timedelta(days=1)
+    return serie
 
 
 def build_dashboard_data(start: date, end: date, ref_date: date | None = None,
@@ -58,7 +104,12 @@ def build_dashboard_data(start: date, end: date, ref_date: date | None = None,
             "cpl_geral": cpl_geral,
             "consumo_teto": st["consumo"],
         },
-        "budget": {"gasto": st["gasto"], "teto": st["teto"], "consumo": st["consumo"], "mes": st["mes"]},
+        "budget": {
+            "gasto": st["gasto"], "teto": st["teto"], "consumo": st["consumo"], "mes": st["mes"],
+            "dias_no_mes": calendar.monthrange(ref_date.year, ref_date.month)[1],
+            "dia_atual": ref_date.day,
+        },
+        "serie_diaria": _serie_diaria(start.replace(day=1), ref_date),
         "campaigns": campaigns,
         "analysis": {
             "resumo": analysis.resumo_executivo,
