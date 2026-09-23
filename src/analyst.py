@@ -56,10 +56,13 @@ def _analisar_leads(c: dict) -> CampaignVerdict:
         return CampaignVerdict(
             nome=c["nome"],
             diagnostico=f"Investiu {_brl(invest)} no período e não gerou nenhum lead. "
-                        "É o pior cenário de eficiência: dinheiro saindo sem retorno direto.",
+                        "O gasto sem conversão costuma vir de segmentação, criativo, oferta ou "
+                        "do fluxo pós-clique (formulário/landing).",
             saude="critica",
-            recomendacao="Pausar ou revisar urgentemente — checar segmentação, oferta e formulário. "
-                         "Não faz sentido manter o gasto sem conversão.",
+            recomendacao="Otimizar antes de pausar: (1) testar novos criativos e ganchos; "
+                         "(2) refinar a segmentação; (3) revisar a oferta e o formulário/landing. "
+                         "Ajustar o lance/budget gradualmente. Se após 1–2 semanas de ajustes "
+                         "ainda não gerar leads, aí sim considerar pausar.",
         )
     if leads == 0:
         return CampaignVerdict(
