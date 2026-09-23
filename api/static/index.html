@@ -22,6 +22,7 @@
     --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 26px rgba(0,0,0,.28);color-scheme:dark;
   }}
   *{box-sizing:border-box}
+  [hidden]{display:none!important}
   body{margin:0;background:var(--bg);color:var(--text);
     font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
   .num{font-variant-numeric:tabular-nums}
@@ -150,6 +151,11 @@
 <script>
 const $=s=>document.querySelector(s);
 let TOKEN=null, DATA=null, filter="all";
+function jwtPayload(t){
+  let b=t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+  b+="===".slice((b.length+3)%4);
+  return JSON.parse(decodeURIComponent(escape(atob(b))));
+}
 const BRL0=n=>n==null?"—":"R$ "+Math.round(n).toLocaleString("pt-BR");
 const BRL2=n=>n==null?"—":"R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
 const PCT=n=>n==null?"—":(n*100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";
@@ -182,7 +188,7 @@ function signout(msg){
 }
 async function enter(){
   $("#login").hidden=true;$("#app").hidden=false;
-  try{const p=JSON.parse(atob(TOKEN.split(".")[1]));$("#who").textContent=p.email||"";}catch(e){}
+  try{$("#who").textContent=jwtPayload(TOKEN).email||"";}catch(e){}
   await load();
 }
 
@@ -238,7 +244,7 @@ $("#refresh").addEventListener("click",load);
 $("#signout").addEventListener("click",()=>signout());
 
 /* auto-login se já tinha token válido (o ID token do Google expira ~1h) */
-(function(){try{const t=localStorage.getItem("vtg_tok");if(t){const p=JSON.parse(atob(t.split(".")[1]));if(p.exp*1000>Date.now()+60000){TOKEN=t;enter();return;}}}catch(e){}boot();})();
+(function(){try{const t=localStorage.getItem("vtg_tok");if(t){const p=jwtPayload(t);if(p.exp*1000>Date.now()+60000){TOKEN=t;enter();return;}}}catch(e){}boot();})();
 </script>
 </body>
 </html>
