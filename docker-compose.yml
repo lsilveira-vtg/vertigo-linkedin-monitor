@@ -50,3 +50,12 @@ services:
       options:
         max-size: "5m"
         max-file: "3"
+  
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: .env
+    ports:
+    - "127.0.0.1:8000"   # só local; o nginx faz o proxy HTTPS
+  restart: unless-stopped
