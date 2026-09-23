@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel Mídia Paga · Vertigo</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg:#f5f7fa;--surface:#fff;--surface-2:#eef1f6;--border:#dce1ea;
+    --text:#16202e;--muted:#5c6879;--faint:#8a93a3;
+    --navy:#1f3864;--accent:#2f6bd8;--accent-weak:#e8f0fc;
+    --good:#15803d;--good-l:#22c55e;--warn:#b45309;--warn-l:#e0a12a;--crit:#c62828;--crit-l:#ef4444;
+    --crit-bg:#fde3e3;--good-bg:#dcfce7;--warn-bg:#fdf0d5;
+    --shadow:0 1px 2px rgba(20,30,48,.06),0 8px 24px rgba(20,30,48,.05);color-scheme:light;
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#0c1320;--surface:#141d2c;--surface-2:#1b2739;--border:#263349;
+    --text:#e9eef5;--muted:#9aa6b8;--faint:#6b7688;--navy:#2c4c88;--accent:#5f95f6;--accent-weak:#16243c;
+    --good:#4ade80;--good-l:#22c55e;--warn:#fbbf24;--warn-l:#e0a12a;--crit:#f87171;--crit-l:#ef4444;
+    --crit-bg:#3a1b1b;--good-bg:#123021;--warn-bg:#3a2c10;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 26px rgba(0,0,0,.28);color-scheme:dark;
+  }}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+  .num{font-variant-numeric:tabular-nums}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+  /* login */
+  #login{min-height:100vh;display:grid;place-items:center;padding:20px}
+  .card-login{background:var(--surface);border:1px solid var(--border);border-radius:18px;
+    box-shadow:var(--shadow);padding:36px 34px;max-width:400px;text-align:center}
+  .logo{width:52px;height:52px;border-radius:13px;margin:0 auto 16px;display:grid;place-items:center;
+    background:linear-gradient(150deg,var(--accent),var(--navy));color:#fff}
+  .logo svg{width:28px;height:28px}
+  .card-login h1{font-size:20px;margin:0 0 6px} .card-login p{color:var(--muted);font-size:14px;margin:0 0 22px}
+  #gbtn{display:flex;justify-content:center;min-height:44px}
+  #login-msg{color:var(--crit);font-size:13px;margin-top:14px;min-height:18px}
+  /* header */
+  header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--surface) 90%,transparent);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+  .htop{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 20px;max-width:1180px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:11px;margin-right:auto}
+  .brand .logo{width:34px;height:34px;margin:0;border-radius:9px}.brand .logo svg{width:19px;height:19px}
+  .brand b{font-size:15px;font-weight:800;display:block;line-height:1.1}.brand span{font-size:11.5px;color:var(--muted)}
+  .who{font-size:12.5px;color:var(--muted)} .btn{background:var(--surface-2);border:1px solid var(--border);
+    border-radius:9px;padding:7px 11px;font:inherit;font-size:13px;cursor:pointer;color:var(--text)}
+  main{padding:20px 0 44px} .grid{display:grid;gap:16px}
+  .updated{font-size:12px;color:var(--faint);margin-bottom:14px}
+  .alert{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:13px;
+    background:var(--crit-bg);border:1px solid color-mix(in srgb,var(--crit) 40%,var(--border));margin-bottom:18px}
+  .alert b{color:var(--crit)} .alert p{margin:2px 0 0;font-size:13.5px}
+  .kpis{grid-template-columns:repeat(4,1fr);margin-bottom:16px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:15px 16px;box-shadow:var(--shadow)}
+  .kpi .lab{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .kpi .val{font-size:29px;font-weight:800;letter-spacing:-.02em;margin-top:7px;line-height:1}
+  .kpi .sub{font-size:12px;color:var(--muted);margin-top:6px} .kpi.crit .val{color:var(--crit)}
+  .two{grid-template-columns:1.15fr 1fr;margin-bottom:16px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+  .card h2{font-size:14px;font-weight:700;margin:0;padding:14px 16px 0}
+  .card .body{padding:14px 16px 16px}
+  .bar-row{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:12.5px}
+  .bar-row .nm{width:130px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-track{flex:1;height:22px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--navy))}
+  .bar-row .vl{width:78px;text-align:right;flex:none;font-variant-numeric:tabular-nums;font-weight:600}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 12px}
+  .seg{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:3px;gap:2px}
+  .seg button{border:0;background:transparent;padding:6px 11px;border-radius:7px;font:inherit;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer}
+  .seg button.on{background:var(--surface);color:var(--text)}
+  .tscroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
+  th{text-align:right;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  td{padding:11px 12px;border-bottom:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+  .cn{font-weight:600;display:flex;align-items:center;gap:9px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+  .t{font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-weak);padding:1px 6px;border-radius:5px;margin-left:2px}
+  .analysis .body{font-size:13.5px} .act{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);font-size:13px}
+  .act .n{width:20px;height:20px;border-radius:6px;background:var(--navy);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex:none}
+  .chat{display:flex;flex-direction:column;min-height:360px}
+  .chat .body{display:flex;flex-direction:column;gap:11px;flex:1;overflow-y:auto;max-height:420px}
+  .msg{max-width:88%;padding:10px 13px;border-radius:13px;font-size:13px;line-height:1.45;white-space:pre-wrap}
+  .msg.u{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+  .msg.a{align-self:flex-start;background:var(--surface-2);border:1px solid var(--border);border-bottom-left-radius:4px}
+  .suggest{display:flex;gap:7px;flex-wrap:wrap;padding:0 16px 10px}
+  .suggest button{font:inherit;font-size:12px;border:1px solid var(--border);background:var(--surface);border-radius:20px;padding:6px 11px;cursor:pointer;color:var(--text)}
+  .composer{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}
+  .composer input{flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font:inherit;font-size:13px;color:var(--text)}
+  .composer button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:0 15px;font-weight:600;cursor:pointer}
+  .skel{color:var(--faint);padding:40px;text-align:center}
+  @media(max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="card-login">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>
+    <h1>Painel Mídia Paga</h1>
+    <p>Agente de monitoramento LinkedIn Ads · Vertigo.<br>Entre com sua conta Vertigo.</p>
+    <div id="gbtn"></div>
+    <div id="login-msg"></div>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header><div class="htop">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>
+      <div><b>Mídia Paga · LinkedIn</b><span>Agente de monitoramento · Vertigo</span></div>
+    </div>
+    <span class="who" id="who"></span>
+    <button class="btn" id="refresh">Atualizar</button>
+    <button class="btn" id="signout">Sair</button>
+  </div></header>
+
+  <main class="wrap">
+    <div class="updated" id="updated"></div>
+    <div id="alert"></div>
+    <section class="grid kpis" id="kpis"></section>
+    <section class="grid two">
+      <div class="card"><h2>Gasto por campanha</h2><div class="body" id="bars"></div></div>
+      <div class="card analysis"><h2>Análise do agente</h2><div class="body"><p id="resumo"></p><div id="acoes"></div></div></div>
+    </section>
+    <section class="card" style="margin-bottom:16px">
+      <h2 style="padding:14px 16px 12px">Campanhas</h2>
+      <div class="tools"><div class="seg" id="filter">
+        <button class="on" data-f="all">Todas</button><button data-f="critica">🔴</button>
+        <button data-f="atencao">🟡</button><button data-f="boa">🟢</button></div></div>
+      <div class="tscroll"><table><thead><tr>
+        <th>Campanha</th><th>Status</th><th>Invest.</th><th>Leads</th><th>CPL</th><th>Cliques</th><th>CPC</th><th>CTR</th>
+      </tr></thead><tbody id="rows"></tbody></table></div>
+    </section>
+    <section class="card chat">
+      <h2 style="padding:14px 16px 0">Pergunte ao agente</h2>
+      <div class="body" id="chat"><div class="msg a">Oi! Posso responder sobre gasto, CPL, campanhas e orçamento — com base nos dados atuais. O que você quer saber?</div></div>
+      <div class="suggest" id="suggest">
+        <button>Qual campanha cortar primeiro?</button>
+        <button>Como está o orçamento?</button>
+        <button>Qual a campanha mais eficiente?</button>
+      </div>
+      <form class="composer" id="composer"><input id="q" placeholder="Escreva sua pergunta…" autocomplete="off"><button>Enviar</button></form>
+    </section>
+  </main>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+let TOKEN=null, DATA=null, filter="all";
+const BRL0=n=>n==null?"—":"R$ "+Math.round(n).toLocaleString("pt-BR");
+const BRL2=n=>n==null?"—":"R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const PCT=n=>n==null?"—":(n*100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";
+const HC={boa:"var(--good-l)",atencao:"var(--warn-l)",critica:"var(--crit-l)"};
+const HE={boa:"🟢",atencao:"🟡",critica:"🔴"};
+const ST={ACTIVE:"Ativa",PAUSED:"Pausada",COMPLETED:"Concluída",DRAFT:"Rascunho"};
+
+async function api(path, opts={}){
+  const r=await fetch(path,{...opts,headers:{Authorization:"Bearer "+TOKEN,...(opts.headers||{})}});
+  if(r.status===401||r.status===403){signout(r.status===403?"Acesso restrito à Vertigo.":"Sessão expirada, entre novamente.");throw new Error("auth");}
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  return r.json();
+}
+
+/* ---- login ---- */
+async function boot(){
+  let cfg;
+  try{cfg=await (await fetch("/api/config")).json();}catch(e){$("#login-msg").textContent="API indisponível.";return;}
+  if(!cfg.google_client_id){$("#login-msg").textContent="Login Google ainda não configurado (falta GOOGLE_OAUTH_CLIENT_ID).";return;}
+  const start=()=>{
+    google.accounts.id.initialize({client_id:cfg.google_client_id,callback:onCred});
+    google.accounts.id.renderButton($("#gbtn"),{theme:"filled_blue",size:"large",text:"signin_with",shape:"pill"});
+  };
+  (window.google&&google.accounts)?start():window.addEventListener("load",()=>setTimeout(start,300));
+}
+function onCred(resp){TOKEN=resp.credential;try{localStorage.setItem("vtg_tok",TOKEN);}catch(e){}enter();}
+function signout(msg){
+  TOKEN=null;try{localStorage.removeItem("vtg_tok");google.accounts.id.disableAutoSelect();}catch(e){}
+  $("#app").hidden=true;$("#login").hidden=false;$("#login-msg").textContent=msg||"";
+}
+async function enter(){
+  $("#login").hidden=true;$("#app").hidden=false;
+  try{const p=JSON.parse(atob(TOKEN.split(".")[1]));$("#who").textContent=p.email||"";}catch(e){}
+  await load();
+}
+
+/* ---- dashboard ---- */
+async function load(){
+  $("#kpis").innerHTML='<div class="skel">Carregando dados…</div>';
+  try{DATA=await api("/api/dashboard");}catch(e){if(e.message!=="auth")$("#kpis").innerHTML='<div class="skel">Erro ao carregar.</div>';return;}
+  render();
+}
+function render(){
+  const k=DATA.kpis;
+  $("#updated").textContent="Período "+DATA.period+" · atualizado "+DATA.updated_at+" · leads = formulários do LinkedIn";
+  const over=k.consumo_teto!=null&&k.consumo_teto>1;
+  $("#alert").innerHTML=over?`<div class="alert"><div><b>⚠️ Orçamento estourado — ${Math.round(k.consumo_teto*100)}% do teto.</b><p>Gasto de ${BRL0(DATA.budget.gasto)} sobre um teto de ${BRL0(DATA.budget.teto)} no mês.</p></div></div>`:"";
+  const kpis=[
+    ["Investimento",BRL0(k.investimento),DATA.campaigns.length+" campanhas",false],
+    ["Leads",k.leads,"formulários do LinkedIn",false],
+    ["CPL geral",BRL0(k.cpl_geral),"campanhas de lead",false],
+    ["Consumo do teto",k.consumo_teto==null?"—":Math.round(k.consumo_teto*100)+"%",DATA.budget.teto?`${BRL0(DATA.budget.gasto)} / ${BRL0(DATA.budget.teto)}`:"teto não configurado",over],
+  ];
+  $("#kpis").innerHTML=kpis.map(([l,v,s,c])=>`<div class="kpi ${c?'crit':''}"><div class="lab">${l}</div><div class="val num">${v}</div><div class="sub">${s}</div></div>`).join("");
+  const mx=Math.max(...DATA.campaigns.map(c=>c.investimento),1);
+  $("#bars").innerHTML=DATA.campaigns.map(c=>`<div class="bar-row"><span class="nm" title="${c.nome}">${c.nome.split(" - ")[0]}</span><div class="bar-track"><div class="bar-fill" style="width:${(c.investimento/mx*100).toFixed(1)}%"></div></div><span class="vl">${BRL0(c.investimento)}</span></div>`).join("");
+  $("#resumo").textContent=DATA.analysis.resumo;
+  $("#acoes").innerHTML=DATA.analysis.acoes.map((a,i)=>`<div class="act"><span class="n">${i+1}</span><span>${a}</span></div>`).join("");
+  rows();
+}
+function rows(){
+  const list=DATA.campaigns.filter(c=>filter==="all"||c.saude===filter);
+  $("#rows").innerHTML=list.map(c=>{
+    const traf=c.tipo==="trafego";
+    return `<tr><td><span class="cn"><span class="dot" style="background:${HC[c.saude]||'#888'}"></span>${c.nome}${traf?' <span class="t">TRÁFEGO</span>':''}</span></td>
+      <td><span class="pill" style="background:var(--surface-2);color:var(--muted)">${ST[c.status]||c.status||'—'}</span></td>
+      <td class="num">${BRL0(c.investimento)}</td><td class="num">${traf?'—':c.leads}</td>
+      <td class="num">${BRL0(c.cpl)}</td><td class="num">${c.cliques.toLocaleString("pt-BR")}</td>
+      <td class="num">${BRL2(c.cpc)}</td><td class="num">${PCT(c.ctr)}</td></tr>`;
+  }).join("")||'<tr><td colspan="8" style="text-align:center;color:var(--faint);padding:24px">Nenhuma campanha neste filtro.</td></tr>';
+}
+
+/* ---- chat ---- */
+function addMsg(role,text){const d=document.createElement("div");d.className="msg "+role;d.textContent=text;$("#chat").appendChild(d);$("#chat").scrollTop=$("#chat").scrollHeight;return d;}
+async function ask(text){
+  addMsg("u",text);const wait=addMsg("a","…");
+  try{const r=await api("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:text})});wait.textContent=r.answer;}
+  catch(e){wait.textContent="(não consegui responder agora)";}
+}
+
+/* ---- eventos ---- */
+$("#composer").addEventListener("submit",e=>{e.preventDefault();const v=$("#q").value.trim();if(v){ask(v);$("#q").value="";}});
+$("#suggest").addEventListener("click",e=>{const b=e.target.closest("button");if(b)ask(b.textContent);});
+$("#filter").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;filter=b.dataset.f;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));rows();});
+$("#refresh").addEventListener("click",load);
+$("#signout").addEventListener("click",()=>signout());
+
+/* auto-login se já tinha token válido (o ID token do Google expira ~1h) */
+(function(){try{const t=localStorage.getItem("vtg_tok");if(t){const p=JSON.parse(atob(t.split(".")[1]));if(p.exp*1000>Date.now()+60000){TOKEN=t;enter();return;}}}catch(e){}boot();})();
+</script>
+</body>
+</html>

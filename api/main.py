@@ -27,10 +27,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from src import dashboard_data, analyst_ai
 from src.report_builder import collect_campaign_data
+
+STATIC = Path(__file__).parent / "static"
 
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "*")
 ALLOWED_DOMAIN = os.getenv("ALLOWED_EMAIL_DOMAIN", "vertigo.com.br")
@@ -90,9 +93,20 @@ def _load(force: bool = False):
 
 
 # ---------- rotas ----------
+@app.get("/")
+def index():
+    return FileResponse(STATIC / "index.html")
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/config")
+def config_public():
+    """Config pública para o frontend (o client_id do Google não é segredo)."""
+    return {"google_client_id": os.getenv("GOOGLE_OAUTH_CLIENT_ID", ""), "domain": ALLOWED_DOMAIN}
 
 
 @app.get("/api/dashboard")
