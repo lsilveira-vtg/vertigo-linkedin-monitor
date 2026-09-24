@@ -198,6 +198,7 @@
 <script>
 const $=s=>document.querySelector(s);
 let TOKEN=null, DATA=null, filter="all";
+let DOMAIN="vertigo.com.br";
 function jwtPayload(t){
   let b=t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
   b+="===".slice((b.length+3)%4);
@@ -222,6 +223,7 @@ async function api(path, opts={}){
 async function boot(){
   let cfg;
   try{cfg=await (await fetch("/api/config")).json();}catch(e){$("#login-msg").textContent="API indisponível.";return;}
+  if(cfg.domain){DOMAIN=cfg.domain;}
   if(!cfg.google_client_id){$("#login-msg").textContent="Login Google ainda não configurado (falta GOOGLE_OAUTH_CLIENT_ID).";return;}
   const start=()=>{
     google.accounts.id.initialize({client_id:cfg.google_client_id,callback:onCred});
@@ -229,7 +231,17 @@ async function boot(){
   };
   (window.google&&google.accounts)?start():window.addEventListener("load",()=>setTimeout(start,300));
 }
-function onCred(resp){TOKEN=resp.credential;try{localStorage.setItem("vtg_tok",TOKEN);}catch(e){}enter();}
+function onCred(resp){
+  let email="";
+  try{email=(jwtPayload(resp.credential).email||"").toLowerCase();}
+  catch(e){$("#login-msg").textContent="Não consegui validar o login. Tente de novo.";return;}
+  if(!email.endsWith("@"+DOMAIN)){          // veta e-mail pessoal já no login
+    try{google.accounts.id.disableAutoSelect();}catch(e){}
+    $("#login-msg").textContent="Acesso restrito a contas @"+DOMAIN+". Entre com seu e-mail Vertigo, não use e-mail pessoal.";
+    return;
+  }
+  TOKEN=resp.credential;try{localStorage.setItem("vtg_tok",TOKEN);}catch(e){}enter();
+}
 function signout(msg){
   TOKEN=null;try{localStorage.removeItem("vtg_tok");google.accounts.id.disableAutoSelect();}catch(e){}
   $("#app").hidden=true;$("#login").hidden=false;$("#login-msg").textContent=msg||"";
