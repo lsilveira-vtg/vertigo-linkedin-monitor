@@ -20,8 +20,11 @@ Variáveis de ambiente:
 import os
 import sys
 import time
-from datetime import date, timedelta
+from collections import deque
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+
+BRT = timezone(timedelta(hours=-3))
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -52,6 +55,9 @@ app.add_middleware(
 
 _cache: dict = {"ts": 0, "raw": None, "dash": None}
 _cache_ia: dict = {"ts": 0, "analysis": None}
+# Histórico COMPARTILHADO das últimas 8 consultas (todos veem as mesmas).
+# Fica em memória: reinicia junto com o container (a cada deploy).
+_history: deque = deque(maxlen=8)
 
 
 # ---------- autenticação ----------
@@ -156,4 +162,15 @@ def ask(p: Pergunta, user: str = Depends(current_user)):
         raise HTTPException(422, "Pergunta vazia.")
     raw, dash = _load()
     resposta = analyst_ai.answer_question(q, raw, dash.get("budget"))
+    _history.append({
+        "q": q, "a": resposta,
+        "by": user.split("@")[0],
+        "ts": datetime.now(BRT).strftime("%d/%m %H:%M"),
+    })
     return {"answer": resposta, "asked_by": user}
+
+
+@app.get("/api/history")
+def history(_: str = Depends(current_user)):
+    """Últimas 8 consultas do time (compartilhadas). Mais antiga -> mais nova."""
+    return list(_history)

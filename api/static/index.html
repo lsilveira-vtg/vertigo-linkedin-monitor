@@ -46,6 +46,17 @@
   a.btn.sheet{text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:600;
     color:var(--accent);background:var(--accent-weak);border-color:color-mix(in srgb,var(--accent) 30%,var(--border))}
   a.btn.sheet:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.help{color:var(--muted)} .btn.help:hover{color:var(--text);border-color:var(--accent)}
+  .modal{position:fixed;inset:0;z-index:60;background:rgba(12,19,32,.55);display:grid;place-items:center;padding:20px}
+  .modal-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
+    max-width:640px;width:100%;max-height:86vh;overflow-y:auto;padding:24px 26px;position:relative}
+  .modal-x{position:absolute;top:14px;right:14px;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--text);font-size:13px;line-height:1}
+  .modal-card h2{font-size:18px;margin:0 0 3px} .modal-sub{color:var(--muted);font-size:13px;margin:0 0 6px}
+  .modal-card h3{font-size:14px;margin:20px 0 6px}
+  .modal-body{font-size:14px;line-height:1.6} .modal-body ul,.modal-body ol{margin:6px 0;padding-left:20px}
+  .modal-body li{margin:6px 0} .modal-body b{font-weight:700}
+  .modal-note{margin-top:18px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px}
   main{padding:20px 0 44px} .grid{display:grid;gap:16px}
   .updated{font-size:12px;color:var(--faint);margin-bottom:14px}
   .alert{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:13px;
@@ -133,7 +144,18 @@
   .analysis .body{font-size:13.5px} .act{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);font-size:13px}
   .act .n{width:20px;height:20px;border-radius:6px;background:var(--navy);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex:none}
   .chat{display:flex;flex-direction:column;min-height:440px}
+  .chat-wrap{flex:1;display:grid;grid-template-columns:1fr 250px;min-height:0}
+  .chat-main{display:flex;flex-direction:column;min-width:0}
   .chat .body{display:flex;flex-direction:column;gap:11px;flex:1;overflow-y:auto;min-height:300px;max-height:520px}
+  .hist{border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+  .hist-h{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:14px 14px 8px;display:flex;flex-direction:column;gap:2px}
+  .hist-h span{font-size:10.5px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--faint)}
+  .hist-list{flex:1;overflow-y:auto;padding:2px 8px 10px;display:flex;flex-direction:column;gap:6px;max-height:520px}
+  .hist-item{text-align:left;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;cursor:pointer;font:inherit;color:var(--text);line-height:1.35}
+  .hist-item:hover{border-color:var(--accent);background:var(--accent-weak)}
+  .hist-item .ht{font-size:12.5px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .hist-item .hm{font-size:10px;color:var(--faint);margin-top:3px}
+  .hist-empty{color:var(--faint);font-size:12px;padding:10px 6px}
   .msg{max-width:88%;padding:10px 13px;border-radius:13px;font-size:13px;line-height:1.45;white-space:pre-wrap}
   .msg.u{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
   .msg.a{align-self:flex-start;background:var(--surface-2);border:1px solid var(--border);border-bottom-left-radius:4px}
@@ -149,7 +171,9 @@
   .composer button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:0 15px;font-weight:600;cursor:pointer}
   .skel{grid-column:1/-1;color:var(--muted);padding:34px;text-align:center}
   .skel .btn{margin-top:2px}
-  @media(max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr}}
+  @media(max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr}
+    .chat-wrap{grid-template-columns:1fr}.hist{border-left:0;border-top:1px solid var(--border)}
+    .hist-list{max-height:220px}}
 </style>
 </head>
 <body>
@@ -172,6 +196,7 @@
       <div><b>Mídia Paga · LinkedIn</b><span>Agente de monitoramento de mídia paga</span></div>
     </div>
     <span class="who" id="who"></span>
+    <button class="btn help" id="helpBtn" type="button">❓ Como usar</button>
     <a class="btn sheet" id="sheetBtn" href="#" target="_blank" rel="noopener" hidden>📄 Consultar planilha</a>
     <button class="btn" id="refresh">Atualizar</button>
     <button class="btn" id="signout">Sair</button>
@@ -206,15 +231,59 @@
     </section>
     <section class="card chat">
       <h2 style="padding:14px 16px 0">Pergunte ao agente</h2>
-      <div class="body" id="chat"><div class="msg a">Oi! Posso responder sobre gasto, CPL, campanhas e orçamento, com base nos dados atuais. O que você quer saber?</div></div>
-      <div class="suggest" id="suggest">
-        <button>Qual campanha cortar primeiro?</button>
-        <button>Como está o orçamento?</button>
-        <button>Qual a campanha mais eficiente?</button>
+      <div class="chat-wrap">
+        <div class="chat-main">
+          <div class="body" id="chat"><div class="msg a">Oi! Posso responder sobre gasto, CPL, campanhas e orçamento, com base nos dados atuais. O que você quer saber?</div></div>
+          <div class="suggest" id="suggest">
+            <button>Qual campanha cortar primeiro?</button>
+            <button>Como está o orçamento?</button>
+            <button>Qual a campanha mais eficiente?</button>
+          </div>
+          <form class="composer" id="composer"><input id="q" placeholder="Escreva sua pergunta…" autocomplete="off"><button>Enviar</button></form>
+        </div>
+        <aside class="hist">
+          <div class="hist-h">Histórico <span>últimas 8 consultas do time</span></div>
+          <div class="hist-list" id="histList"><div class="hist-empty">Ainda sem consultas.</div></div>
+        </aside>
       </div>
-      <form class="composer" id="composer"><input id="q" placeholder="Escreva sua pergunta…" autocomplete="off"><button>Enviar</button></form>
     </section>
   </main>
+
+  <div id="help" class="modal" hidden>
+    <div class="modal-card">
+      <button class="modal-x" id="helpClose" type="button" aria-label="Fechar">✕</button>
+      <h2>Como usar o painel</h2>
+      <p class="modal-sub">Guia rápido do agente de mídia paga da Vertigo.</p>
+      <div class="modal-body">
+        <h3>✅ O que o agente faz</h3>
+        <ul>
+          <li>Acompanha as campanhas de <b>LinkedIn Ads</b> e mostra os números do mês: investimento, leads, CPL, CPC, CTR e consumo do teto de verba.</li>
+          <li>Gera <b>análise e recomendações</b> como um analista sênior: o que está funcionando, o que melhorar e ações prioritárias.</li>
+          <li>Mostra <b>gráficos</b>: gasto x teto ao longo do mês, CPL por campanha e distribuição do gasto.</li>
+          <li>Responde <b>perguntas ao vivo</b> no chat, sempre com base nos dados atuais das campanhas.</li>
+          <li>Envia <b>relatórios por e-mail</b> (semanal e mensal) e guarda tudo na <b>planilha</b> (botão “Consultar planilha”).</li>
+        </ul>
+        <h3>🚫 O que o agente não faz</h3>
+        <ul>
+          <li><b>Não executa ações</b> no LinkedIn: não pausa, não edita e não cria campanhas. Ele apenas <b>recomenda</b>; a decisão é sempre humana.</li>
+          <li><b>Não fala de outros assuntos.</b> Responde só sobre mídia paga; recusa segurança da informação, temas aleatórios e pedidos fora do escopo.</li>
+          <li><b>Não substitui o CRM.</b> “Leads” aqui são formulários do LinkedIn; a qualidade real (MQL) é confirmada no CRM.</li>
+          <li><b>Não inventa números.</b> Se faltar dado, ele diz que não é possível responder.</li>
+        </ul>
+        <h3>🧭 Como usar (passo a passo)</h3>
+        <ol>
+          <li>Comece pelos <b>KPIs</b> no topo e pelo alerta de orçamento.</li>
+          <li>Leia a <b>Análise &amp; recomendações do agente</b> (síntese + ações prioritárias).</li>
+          <li>Em qualquer ação, clique <b>“✨ Gerar insights”</b> para o agente aprofundar no chat.</li>
+          <li>Use o <b>chat</b> “Pergunte ao agente” para perguntas livres (ex.: “qual campanha cortar primeiro?”).</li>
+          <li>O <b>Histórico</b> (lateral do chat) guarda as <b>últimas 8 consultas</b> do time, para todos consultarem.</li>
+          <li><b>Recolha os gráficos</b> que não quiser ver (botão de minimizar) — a preferência fica salva.</li>
+          <li>Abra a <b>planilha</b> completa pelo botão no topo.</li>
+        </ol>
+        <p class="modal-note">Os <b>números</b> atualizam a cada ~10 minutos. A <b>análise</b> fica estável por algumas horas, então todo mundo que entra vê a mesma leitura. Acesso restrito a contas <b>@vertigo.com.br</b>.</p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -295,6 +364,7 @@ async function load(){
   }
   render();
   loadAnalise();   // análise rica por IA vem em paralelo, sem travar o painel
+  loadHistory();   // histórico compartilhado das últimas 8 consultas
 }
 function render(){
   const k=DATA.kpis;
@@ -457,15 +527,41 @@ function addMsg(role,text){
 }
 async function ask(text){
   addMsg("u",text);const wait=addMsg("a","…");
-  try{const r=await api("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:text})});wait.innerHTML=md(r.answer);}
+  try{const r=await api("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:text})});wait.innerHTML=md(r.answer);loadHistory();}
   catch(e){wait.textContent="(não consegui responder agora)";}
   $("#chat").scrollTop=$("#chat").scrollHeight;
+}
+
+/* ---- histórico compartilhado (últimas 8 consultas do time) ---- */
+let HIST=[];
+async function loadHistory(){
+  try{const list=await api("/api/history");renderHistory(Array.isArray(list)?list:[]);}
+  catch(e){/* histórico é auxiliar; se falhar, não atrapalha o chat */}
+}
+function renderHistory(list){
+  HIST=list||[];
+  const el=$("#histList");
+  if(!HIST.length){el.innerHTML='<div class="hist-empty">Ainda sem consultas.</div>';return;}
+  el.innerHTML=HIST.map((h,i)=>({h,i})).reverse().map(({h,i})=>{
+    const meta=[h.by,h.ts].filter(Boolean).join(" · ");
+    return `<button class="hist-item" data-i="${i}"><div class="ht">${mdEsc(h.q||"")}</div>${meta?`<div class="hm">${mdEsc(meta)}</div>`:""}</button>`;
+  }).join("");
+}
+function showFromHistory(i){
+  const h=HIST[i]; if(!h)return;
+  addMsg("u",h.q); addMsg("a",h.a||"");
+  document.querySelector(".chat").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 /* ---- eventos ---- */
 $("#composer").addEventListener("submit",e=>{e.preventDefault();const v=$("#q").value.trim();if(v){ask(v);$("#q").value="";}});
 $("#suggest").addEventListener("click",e=>{const b=e.target.closest("button");if(b)ask(b.textContent);});
 $("#acoes").addEventListener("click",e=>{const b=e.target.closest(".gi");if(b)gerarInsights(decodeURIComponent(b.dataset.q));});
+$("#histList").addEventListener("click",e=>{const b=e.target.closest(".hist-item");if(b)showFromHistory(+b.dataset.i);});
+$("#helpBtn").addEventListener("click",()=>$("#help").hidden=false);
+$("#helpClose").addEventListener("click",()=>$("#help").hidden=true);
+$("#help").addEventListener("click",e=>{if(e.target===$("#help"))$("#help").hidden=true;});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")$("#help").hidden=true;});
 $("#filter").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;filter=b.dataset.f;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));rows();});
 $("#refresh").addEventListener("click",load);
 $("#signout").addEventListener("click",()=>signout());
