@@ -65,9 +65,10 @@ def build_html_report(period_label: str, campaign_data: list[dict],
         traf = c.get("tipo") == "trafego"
         clk = c.get("cliques", 0) or 0
         clk_fmt = f"{clk:,}".replace(",", ".")
-        cpc = _brl2(c["investimento_brl"] / clk) if (traf and clk) else "n/d"
-        leads = "n/d" if traf else (c.get("leads", 0) or 0)
-        cpl = "n/d" if (traf or not c.get("cpl_brl")) else _brl(c["cpl_brl"])
+        # "-" = não se aplica ao tipo da campanha; "n/d" = aplica mas sem dado.
+        cpc = (_brl2(c["investimento_brl"] / clk) if clk else "n/d") if traf else "-"
+        leads = "-" if traf else (c.get("leads", 0) or 0)
+        cpl = "-" if traf else (_brl(c["cpl_brl"]) if c.get("cpl_brl") else "n/d")
         tag = ' <span class="t">TRÁFEGO</span>' if traf else ""
         status = STATUS.get(c.get("status", ""), c.get("status", ""))
         rows += (f'<tr><td class="nm"><span style="color:{color}">{emoji}</span> {c["nome"]}{tag}</td>'

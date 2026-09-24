@@ -13,9 +13,18 @@ from . import linkedin_client
 from .report import CampaignReport, format_report
 
 # Configuracao por campanha: id -> propriedades de exibicao (emoji, type, display, note, budget_cap).
-# Dados sensiveis NAO ficam no codigo: carregados do Secret CAMPAIGN_CONFIG_JSON.
+# Padrao no codigo (nao sensivel: id + tipo + rotulo de exibicao) garante a
+# classificacao correta mesmo sem a variavel no ambiente. O Secret
+# CAMPAIGN_CONFIG_JSON, quando presente, sobrescreve/complementa.
 # Formato: {"123456": {"emoji": "...", "type": "leads", "display": "..."}}
-CAMPAIGN_CONFIG: dict[str, dict] = json.loads(os.getenv("CAMPAIGN_CONFIG_JSON", "{}"))
+_DEFAULT_CAMPAIGN_CONFIG: dict[str, dict] = {
+    # Artigos do Bruno = trafego/branding: avaliar por cliques/CPC/CTR, nao por leads/CPL.
+    "377232663": {"type": "trafego", "display": "Artigos - Bruno", "emoji": "📊"},
+}
+CAMPAIGN_CONFIG: dict[str, dict] = {
+    **_DEFAULT_CAMPAIGN_CONFIG,
+    **json.loads(os.getenv("CAMPAIGN_CONFIG_JSON", "{}")),
+}
 
 # Limites de orcamento mensal por grupo (dados sensiveis) — vem do Secret MONTHLY_BUDGETS_JSON.
 # Formato: {"Grupo": limite_em_reais}

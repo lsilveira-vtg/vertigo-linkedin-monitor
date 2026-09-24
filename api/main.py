@@ -20,7 +20,6 @@ Variáveis de ambiente:
 import os
 import sys
 import time
-from collections import deque
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -33,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from src import dashboard_data, analyst_ai
+from src import dashboard_data, analyst_ai, chat_history
 from src.report_builder import collect_campaign_data
 
 STATIC = Path(__file__).parent / "static"
@@ -55,9 +54,6 @@ app.add_middleware(
 
 _cache: dict = {"ts": 0, "raw": None, "dash": None}
 _cache_ia: dict = {"ts": 0, "analysis": None}
-# Histórico COMPARTILHADO das últimas 8 consultas (todos veem as mesmas).
-# Fica em memória: reinicia junto com o container (a cada deploy).
-_history: deque = deque(maxlen=8)
 
 
 # ---------- autenticação ----------
@@ -162,15 +158,32 @@ def ask(p: Pergunta, user: str = Depends(current_user)):
         raise HTTPException(422, "Pergunta vazia.")
     raw, dash = _load()
     resposta = analyst_ai.answer_question(q, raw, dash.get("budget"))
-    _history.append({
-        "q": q, "a": resposta,
-        "by": user.split("@")[0],
-        "ts": datetime.now(BRT).strftime("%d/%m %H:%M"),
-    })
+    try:
+        chat_history.add(q, resposta, user.split("@")[0],
+                         datetime.now(BRT).strftime("%d/%m %H:%M"))
+    except Exception as exc:
+        print(f"  aviso: não salvei no histórico: {exc}")
     return {"answer": resposta, "asked_by": user}
 
 
 @app.get("/api/history")
 def history(_: str = Depends(current_user)):
-    """Últimas 8 consultas do time (compartilhadas). Mais antiga -> mais nova."""
-    return list(_history)
+    """Consultas recentes do time (persistidas na planilha). Antiga -> nova."""
+    try:
+        return chat_history.last()
+    except Exception as exc:
+        print(f"  aviso: histórico indisponível: {exc}")
+        return []
+
+
+class DelHist(BaseModel):
+    id: str
+
+
+@app.post("/api/history/delete")
+def history_delete(p: DelHist, _: str = Depends(current_user)):
+    try:
+        chat_history.delete(p.id)
+        return {"ok": True}
+    except Exception as exc:
+        raise HTTPException(500, f"Não consegui deletar: {exc}")

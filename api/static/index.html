@@ -151,10 +151,16 @@
   .hist-h{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:14px 14px 8px;display:flex;flex-direction:column;gap:2px}
   .hist-h span{font-size:10.5px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--faint)}
   .hist-list{flex:1;overflow-y:auto;padding:2px 8px 10px;display:flex;flex-direction:column;gap:6px;max-height:520px}
-  .hist-item{text-align:left;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;cursor:pointer;font:inherit;color:var(--text);line-height:1.35}
-  .hist-item:hover{border-color:var(--accent);background:var(--accent-weak)}
+  .hist-item{position:relative;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 10px}
+  .hist-item:hover{border-color:var(--accent)}
+  .hist-open{display:block;width:100%;text-align:left;background:transparent;border:0;cursor:pointer;font:inherit;color:var(--text);padding:0 18px 0 0;line-height:1.35}
   .hist-item .ht{font-size:12.5px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .hist-item .hm{font-size:10px;color:var(--faint);margin-top:3px}
+  .hist-dots{position:absolute;top:4px;right:4px;background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:1px 5px;border-radius:6px}
+  .hist-dots:hover{background:var(--surface);color:var(--text)}
+  .hist-menu{position:absolute;top:26px;right:6px;z-index:5;background:var(--surface);border:1px solid var(--border);border-radius:9px;box-shadow:var(--shadow);padding:4px}
+  .hist-del{display:flex;align-items:center;gap:6px;width:100%;background:transparent;border:0;cursor:pointer;font:inherit;font-size:12.5px;color:var(--crit);padding:6px 10px;border-radius:6px;white-space:nowrap}
+  .hist-del:hover{background:var(--crit-bg)}
   .hist-empty{color:var(--faint);font-size:12px;padding:10px 6px}
   .msg{max-width:88%;padding:10px 13px;border-radius:13px;font-size:13px;line-height:1.45;white-space:pre-wrap}
   .msg.u{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
@@ -297,6 +303,7 @@ function jwtPayload(t){
   return JSON.parse(decodeURIComponent(escape(atob(b))));
 }
 const NA='<span class="na">n/d</span>';
+const DASH='<span class="na" title="Não se aplica a esta campanha">-</span>';
 const BRL0=n=>n==null?NA:"R$ "+Math.round(n).toLocaleString("pt-BR");
 const BRL2=n=>n==null?NA:"R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
 const PCT=n=>n==null?NA:(n*100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";
@@ -512,9 +519,9 @@ function rows(){
     const traf=c.tipo==="trafego";
     return `<tr><td><span class="cn"><span class="dot" style="background:${HC[c.saude]||'#888'}"></span>${c.nome}${traf?' <span class="t">TRÁFEGO</span>':''}</span></td>
       <td><span class="pill" style="background:var(--surface-2);color:var(--muted)">${ST[c.status]||c.status||NA}</span></td>
-      <td class="num">${BRL0(c.investimento)}</td><td class="num">${traf?NA:c.leads}</td>
-      <td class="num">${BRL0(c.cpl)}</td><td class="num">${(c.cliques||0).toLocaleString("pt-BR")}</td>
-      <td class="num">${BRL2(c.cpc)}</td><td class="num">${PCT(c.ctr)}</td></tr>`;
+      <td class="num">${BRL0(c.investimento)}</td><td class="num">${traf?DASH:c.leads}</td>
+      <td class="num">${traf?DASH:BRL0(c.cpl)}</td><td class="num">${(c.cliques||0).toLocaleString("pt-BR")}</td>
+      <td class="num">${traf?BRL2(c.cpc):DASH}</td><td class="num">${PCT(c.ctr)}</td></tr>`;
   }).join("")||'<tr><td colspan="8" style="text-align:center;color:var(--faint);padding:24px">Nenhuma campanha neste filtro.</td></tr>';
 }
 
@@ -544,20 +551,34 @@ function renderHistory(list){
   if(!HIST.length){el.innerHTML='<div class="hist-empty">Ainda sem consultas.</div>';return;}
   el.innerHTML=HIST.map((h,i)=>({h,i})).reverse().map(({h,i})=>{
     const meta=[h.by,h.ts].filter(Boolean).join(" · ");
-    return `<button class="hist-item" data-i="${i}"><div class="ht">${mdEsc(h.q||"")}</div>${meta?`<div class="hm">${mdEsc(meta)}</div>`:""}</button>`;
+    const menu=h.id?`<button class="hist-dots" type="button" title="Opções">⋯</button>`
+      +`<div class="hist-menu" hidden><button class="hist-del" data-id="${mdEsc(h.id)}" type="button">🗑 Deletar</button></div>`:"";
+    return `<div class="hist-item"><button class="hist-open" data-i="${i}" type="button"><div class="ht">${mdEsc(h.q||"")}</div>${meta?`<div class="hm">${mdEsc(meta)}</div>`:""}</button>${menu}</div>`;
   }).join("");
 }
+function closeHistMenus(){document.querySelectorAll(".hist-menu").forEach(m=>m.hidden=true);}
 function showFromHistory(i){
   const h=HIST[i]; if(!h)return;
   addMsg("u",h.q); addMsg("a",h.a||"");
   document.querySelector(".chat").scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function delHistory(id){
+  closeHistMenus();
+  try{await api("/api/history/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id})});loadHistory();}
+  catch(e){HIST=HIST.filter(h=>h.id!==id);renderHistory(HIST);}   // preview/offline: remove local
 }
 
 /* ---- eventos ---- */
 $("#composer").addEventListener("submit",e=>{e.preventDefault();const v=$("#q").value.trim();if(v){ask(v);$("#q").value="";}});
 $("#suggest").addEventListener("click",e=>{const b=e.target.closest("button");if(b)ask(b.textContent);});
 $("#acoes").addEventListener("click",e=>{const b=e.target.closest(".gi");if(b)gerarInsights(decodeURIComponent(b.dataset.q));});
-$("#histList").addEventListener("click",e=>{const b=e.target.closest(".hist-item");if(b)showFromHistory(+b.dataset.i);});
+$("#histList").addEventListener("click",e=>{
+  const del=e.target.closest(".hist-del");if(del){delHistory(del.dataset.id);return;}
+  const dots=e.target.closest(".hist-dots");
+  if(dots){e.stopPropagation();const m=dots.parentElement.querySelector(".hist-menu");closeHistMenus();if(m)m.hidden=false;return;}
+  const open=e.target.closest(".hist-open");if(open)showFromHistory(+open.dataset.i);
+});
+document.addEventListener("click",e=>{if(!e.target.closest(".hist-dots")&&!e.target.closest(".hist-menu"))closeHistMenus();});
 $("#helpBtn").addEventListener("click",()=>$("#help").hidden=false);
 $("#helpClose").addEventListener("click",()=>$("#help").hidden=true);
 $("#help").addEventListener("click",e=>{if(e.target===$("#help"))$("#help").hidden=true;});
