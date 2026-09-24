@@ -41,7 +41,7 @@ def main() -> None:
             print(f"  aviso: não publiquei no vtg-link: {exc}")
 
     if link:
-        body += f"\n\n———\nVer online (requer login Vertigo): {link}"
+        body += f"\n\n---\nVer online (requer login Vertigo): {link}"
 
     mailer.send_email(subject=f"Vertigo | Report Semanal LinkedIn | {period}", body=body)
     print(f"Report semanal {period} enviado.")

@@ -4,7 +4,27 @@ Aplica heurísticas e benchmarks de mídia paga B2B (LinkedIn Ads) para produzir
 um feedback no nível de um analista sênior, sem depender de API externa.
 A análise é consultiva — não executa nenhuma ação nas campanhas.
 """
+import re
 from dataclasses import dataclass, field
+
+
+def _sem_travessao(t: str) -> str:
+    """Troca travessão/meia-risca por pontuação simples (regra do time: sem '—')."""
+    if not t:
+        return t
+    t = t.replace(" — ", ", ").replace(" – ", ", ").replace("—", ", ")
+    t = re.sub(r"(?<=\d)\s*–\s*(?=\d)", "-", t)   # faixas: 22–40 -> 22-40
+    return t.replace("–", ", ")
+
+
+def _strip_md(t: str) -> str:
+    """Texto puro para o Discord (bloco de código): sem markdown e sem travessão."""
+    if not t:
+        return t
+    t = re.sub(r"\*\*(.+?)\*\*", r"\1", t)                       # **negrito**
+    t = re.sub(r"(?<!\*)\*(?!\s)([^*]+?)\*(?!\*)", r"\1", t)     # *itálico*
+    t = re.sub(r"^\s*#{1,6}\s*", "", t, flags=re.M)             # ## título
+    return _sem_travessao(t.replace("`", ""))
 
 # Benchmarks calibrados com o histórico real da Vertigo (jul/2026).
 # Base: campanhas de leads eficientes rodam a R$ 22–30; CPL médio (blended) da
@@ -310,17 +330,17 @@ def format_analysis(analysis: Analysis) -> str:
     """Formata a análise em texto legível (para e-mail / Discord)."""
     emoji = {"boa": "🟢", "atencao": "🟡", "critica": "🔴"}
     lines = ["🧠 ANÁLISE DO AGENTE", ""]
-    lines.append(analysis.resumo_executivo)
+    lines.append(_strip_md(analysis.resumo_executivo))
     lines.append("")
-    lines.append("— Por campanha —")
+    lines.append("Por campanha:")
     for c in analysis.campanhas:
         lines.append(f"{emoji.get(c.saude, '•')} {c.nome}")
-        lines.append(f"  {c.diagnostico}")
-        lines.append(f"  → {c.recomendacao}")
+        lines.append(f"  {_strip_md(c.diagnostico)}")
+        lines.append(f"  > {_strip_md(c.recomendacao)}")
     lines.append("")
-    lines.append("— Ações prioritárias —")
+    lines.append("Ações prioritárias:")
     for i, acao in enumerate(analysis.acoes_prioritarias, 1):
-        lines.append(f"{i}. {acao}")
+        lines.append(f"{i}. {_strip_md(acao)}")
     if analysis.rodape:
         lines.append("")
         lines.append(analysis.rodape)

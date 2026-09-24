@@ -155,9 +155,9 @@ async def status(interaction: discord.Interaction):
     data = await asyncio.to_thread(collect_campaign_data, start, today)
     analysis = await asyncio.to_thread(analyst.run_analysis, period, data, None, today)
     emoji = {"boa": "🟢", "atencao": "🟡", "critica": "🔴"}
-    lines = [f"**Status das campanhas — {period}**", analysis.resumo_executivo, ""]
+    lines = [f"**Status das campanhas ({period})**", analyst._sem_travessao(analysis.resumo_executivo), ""]
     for v in analysis.campanhas:
-        lines.append(f"{emoji.get(v.saude, '•')} **{v.nome}** — {v.diagnostico}")
+        lines.append(f"{emoji.get(v.saude, '•')} **{v.nome}**: {analyst._sem_travessao(v.diagnostico)}")
     await _send_long(interaction, "\n".join(lines))
 
 
@@ -172,13 +172,13 @@ async def budget_cmd(interaction: discord.Interaction):
     data = await asyncio.to_thread(collect_campaign_data, start, today)
     total = sum(c.get("investimento_brl", 0) or 0 for c in data)
     st = budget.account_status(total, today)
-    lines = [f"**Orçamento — {today.strftime('%m/%Y')}**"]
+    lines = [f"**Orçamento ({today.strftime('%m/%Y')})**"]
     if st["teto"]:
-        consumo = f"{st['consumo'] * 100:.0f}%" if st["consumo"] is not None else "—"
+        consumo = f"{st['consumo'] * 100:.0f}%" if st["consumo"] is not None else "n/d"
         alerta = " ⚠️" if st["consumo"] and st["consumo"] >= 0.90 else ""
         lines.append(f"Conta (total): {_brl(st['gasto'])} / {_brl(st['teto'])} ({consumo}){alerta}")
     else:
-        lines.append(f"Conta (total): {_brl(total)} — teto não configurado")
+        lines.append(f"Conta (total): {_brl(total)} (teto não configurado)")
     for c in data:
         regra = budget.campaign_rule(c["nome"])
         if regra and regra.get("limite_mensal"):
@@ -201,7 +201,7 @@ async def pendentes(interaction: discord.Interaction):
     lines = ["**Recomendações pendentes:**"]
     for it in items:
         lines.append(
-            f"`#{it['row']}` — **{it['campaign']}**\n"
+            f"`#{it['row']}` · **{it['campaign']}**\n"
             f"  {it['action']}\n  Motivo: {it['reason']}"
         )
     lines.append("\nUse `/aprovar id` ou `/rejeitar id`.")

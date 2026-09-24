@@ -4,6 +4,7 @@ Usada para publicar no vtg-link (além do e-mail em texto). Recebe os mesmos
 dados do report (campanhas + análise + orçamento) e devolve um documento HTML
 completo, com CSS embutido (o vtg-link não serve assets externos).
 """
+import re
 from datetime import date
 
 from .analyst import Analysis
@@ -12,7 +13,7 @@ from . import budget
 NAVY = "#1f3864"; ACCENT = "#2f6bd8"
 GOOD = "#15803d"; WARN = "#b45309"; CRIT = "#c62828"
 HEALTH = {"boa": ("🟢", GOOD), "atencao": ("🟡", WARN), "critica": ("🔴", CRIT)}
-STATUS = {"ACTIVE": "Ativa", "PAUSED": "Pausada", "COMPLETED": "Concluída", "DRAFT": "Rascunho", "": "—"}
+STATUS = {"ACTIVE": "Ativa", "PAUSED": "Pausada", "COMPLETED": "Concluída", "DRAFT": "Rascunho", "": "n/d"}
 
 
 def _brl(v: float) -> str:
@@ -24,7 +25,47 @@ def _brl2(v: float) -> str:
 
 
 def _pct(v) -> str:
-    return f"{v * 100:.2f}%".replace(".", ",") if v is not None else "—"
+    return f"{v * 100:.2f}%".replace(".", ",") if v is not None else "n/d"
+
+
+def _inline_md(s: str) -> str:
+    """Negrito/itálico do markdown para HTML (com escape). Remove travessão."""
+    s = str(s or "")
+    s = s.replace(" — ", ", ").replace(" – ", ", ").replace("—", ", ")
+    s = re.sub(r"(?<=\d)\s*–\s*(?=\d)", "-", s).replace("–", ", ")
+    s = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
+    s = re.sub(r"(?<!\*)\*(?!\s)([^*]+?)\*(?!\*)", r"<i>\1</i>", s)
+    return s.replace("`", "")
+
+
+def _md_html(t: str) -> str:
+    """Converte o markdown leve da análise (negrito, títulos, listas) em HTML."""
+    if not t:
+        return ""
+    out, ul = [], False
+    for ln in str(t).split("\n"):
+        ln = ln.strip()
+        if not ln:
+            if ul:
+                out.append("</ul>"); ul = False
+            continue
+        m = re.match(r"^#{1,4}\s+(.+)$", ln)
+        if m:
+            if ul:
+                out.append("</ul>"); ul = False
+            out.append(f'<div class="mh">{_inline_md(m.group(1))}</div>'); continue
+        m = re.match(r"^(?:[-*•]|\d+[.)])\s+(.+)$", ln)
+        if m:
+            if not ul:
+                out.append("<ul>"); ul = True
+            out.append(f"<li>{_inline_md(m.group(1))}</li>"); continue
+        if ul:
+            out.append("</ul>"); ul = False
+        out.append(f"<p>{_inline_md(ln)}</p>")
+    if ul:
+        out.append("</ul>")
+    return "".join(out)
 
 
 def build_html_report(period_label: str, campaign_data: list[dict],
@@ -78,7 +119,7 @@ def build_html_report(period_label: str, campaign_data: list[dict],
                  f'<td class="r">{clk_fmt}</td>'
                  f'<td class="r">{cpc}</td><td class="r">{_pct(c.get("ctr"))}</td></tr>')
 
-    acts = "".join(f"<li>{a}</li>" for a in analysis.acoes_prioritarias)
+    acts = "".join(f"<li>{_inline_md(a)}</li>" for a in analysis.acoes_prioritarias)
     rodape = f'<p class="rod">{analysis.rodape}</p>' if getattr(analysis, "rodape", "") else ""
 
     return f"""<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
@@ -103,6 +144,8 @@ def build_html_report(period_label: str, campaign_data: list[dict],
  .nm{{font-weight:600}} .t{{font-size:9.5px;font-weight:700;color:{ACCENT};background:#e8f0fc;padding:1px 5px;border-radius:4px}}
  .card ol{{margin:0;padding-left:20px}} .card li{{margin:7px 0;font-size:14px}}
  .sum{{font-size:15px;line-height:1.6}} .rod{{color:#5c6879;font-size:12px;margin-top:14px}}
+ .sum p{{margin:0 0 8px}} .sum p:last-child{{margin-bottom:0}} .sum ul{{margin:6px 0;padding-left:20px}} .sum li{{margin:4px 0}}
+ .mh{{font-weight:800;margin:10px 0 4px}} .sum b,.card li b{{font-weight:700}}
  .hero{{border-color:#cfe0fb;border-left:4px solid {ACCENT};background:#fbfdff}}
  .hero h2{{font-size:16px}} .hero li{{font-size:14.5px}}
  .foot{{color:#8a93a3;font-size:12px;text-align:center;margin-top:8px}}
@@ -111,7 +154,7 @@ def build_html_report(period_label: str, campaign_data: list[dict],
  <div class="head"><h1>Vertigo · Mídia Paga LinkedIn</h1><p>Report do período {period_label} · gerado pelo agente</p></div>
  {alert}
  <div class="kpis">{kpi_html}</div>
- <div class="card hero"><h2>Análise &amp; recomendações do agente</h2><p class="sum">{analysis.resumo_executivo}</p>{rodape}</div>
+ <div class="card hero"><h2>Análise &amp; recomendações do agente</h2><div class="sum">{_md_html(analysis.resumo_executivo)}</div>{rodape}</div>
  <div class="card hero"><h2>Ações prioritárias</h2><ol>{acts}</ol></div>
  <div class="card"><h2>Campanhas</h2><div class="tbl"><table>
    <tr><th>Campanha</th><th>Status</th><th>Invest.</th><th>Leads</th><th>CPL</th><th>Cliques</th><th>CPC</th><th>CTR</th></tr>
