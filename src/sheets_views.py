@@ -17,7 +17,7 @@ from .report_builder import collect_campaign_data
 
 RESUMO_TAB = "📊 Resumo"
 
-SAUDE_LABEL = {"boa": "🟢 Boa", "atencao": "🟡 Atenção", "critica": "🔴 Crítica"}
+SAUDE_LABEL = {"boa": "🟢 Boa", "atencao": "🟡 Atenção", "critica": "🔴 Requer ação"}
 STATUS_LABEL = {"ACTIVE": "Ativa", "PAUSED": "Pausada", "DRAFT": "Rascunho",
                 "COMPLETED": "Concluída", "": "—"}
 

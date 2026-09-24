@@ -239,11 +239,11 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
         elif cpl_geral > CPL_REFERENCIA_CONTA:
             partes.append(f"CPL acima da média histórica da conta ({_brl(CPL_REFERENCIA_CONTA)}) — atenção à eficiência.")
     if criticas:
-        partes.append(f"{len(criticas)} campanha(s) em estado crítico exigem ação imediata.")
+        partes.append(f"{len(criticas)} campanha(s) pedem ação prioritária.")
     elif atencao:
-        partes.append(f"{len(atencao)} campanha(s) pedem atenção, mas nada crítico.")
+        partes.append(f"{len(atencao)} campanha(s) pedem atenção, sem urgência.")
     else:
-        partes.append("Nenhum alerta crítico — operação saudável no período.")
+        partes.append("Sem pontos de prioridade, operação saudável no período.")
     partes.append("(Leads = formulários do LinkedIn; MQLs vêm do CRM e podem diferir.)")
     resumo = " ".join(partes)
 
@@ -284,6 +284,12 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
         else:
             acoes.append("Manter a operação e seguir monitorando — sem ações urgentes.")
 
+    # Sem travessão também no motor de regras (usado como fallback da IA).
+    resumo = _sem_travessao(resumo)
+    acoes = [_sem_travessao(a) for a in acoes]
+    for v in verdicts:
+        v.diagnostico = _sem_travessao(v.diagnostico)
+        v.recomendacao = _sem_travessao(v.recomendacao)
     return Analysis(resumo_executivo=resumo, campanhas=verdicts, acoes_prioritarias=acoes)
 
 
