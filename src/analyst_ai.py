@@ -35,6 +35,13 @@ def _limpar(texto: str) -> str:
     t = re.sub(r"\bACTIVE\b", "ativa", t, flags=re.I)
     t = re.sub(r"\bPAUSED\b", "pausada", t, flags=re.I)
     t = re.sub(r"\bDRAFT\b", "rascunho", t, flags=re.I)
+    # suaviza termos duros/alarmistas (rede de segurança, o prompt já orienta)
+    t = re.sub(r"\bqueimou\b", "consumiu", t, flags=re.I)
+    t = re.sub(r"\bsangria\b", "consumo alto", t, flags=re.I)
+    t = re.sub(r"\bgasto (?:claramente )?perdido\b", "gasto sem retorno", t, flags=re.I)
+    t = re.sub(r"\bdesperdícios?\b", "gasto sem retorno", t, flags=re.I)
+    t = re.sub(r"\bestancar\b", "conter", t, flags=re.I)
+    t = re.sub(r"\b(pior|maior)\s+(ofensor|sinal)\b", "principal ponto de atenção", t, flags=re.I)
     t = re.sub(r" {2,}", " ", t).replace(" ,", ",").replace(",,", ",")
     return t.strip()
 
@@ -88,6 +95,12 @@ NUNCA use "estourou", "estourado", "estourar" nem "estouro".
 - Português correto, técnico mas NÃO agressivo (tom de consultoria). Evite anglicismos \
 desnecessários: escreva "geração de leads" (NUNCA "lead gen"/"lead-gen") e o status em \
 português "ativa"/"pausada"/"concluída" (NUNCA "ACTIVE"/"PAUSED"/"COMPLETED").
+- LINGUAGEM SUAVE E RESPEITOSA (importante): aponte os problemas com fatos e números, sem \
+dramatizar. EVITE termos alarmistas/duros como "desperdício", "gasto perdido", "queimou", \
+"sangria", "pior sinal", "muito abaixo do aceitável", "estancar", "corte imediato". PREFIRA \
+enquadramento neutro e construtivo, por exemplo: "baixo retorno até agora", "abaixo do \
+potencial", "ainda não converteu", "oportunidade de otimização", "vale concentrar a verba", \
+"revisar antes de escalar", "conter o ritmo de gasto". O objetivo é orientar, não repreender.
 - Comece cada frase e cada bullet com letra maiúscula.
 - O campo "resumo_executivo" é uma SÍNTESE bem organizada em markdown: 1 frase de diagnóstico; \
 depois um bloco "**O que está funcionando**" e um "**O que precisa melhorar**", curtos, com \
