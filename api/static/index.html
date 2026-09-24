@@ -213,7 +213,7 @@
     <div id="alert"></div>
     <section class="grid kpis" id="kpis"></section>
     <section class="card analysis hero collapsible" data-key="analise">
-      <button class="chead" type="button"><span class="ct">Análise &amp; recomendações do agente <span id="anaLoad" class="anaload" hidden>· aprofundando com IA…</span></span><span class="chev">▾</span></button>
+      <button class="chead" type="button"><span class="ct">Análise &amp; recomendações do agente <span id="anaLoad" class="anaload" hidden>· aprofundando com IA…</span><span id="anaStamp" class="anaload" hidden></span></span><span class="chev">▾</span></button>
       <div class="body"><div id="resumo"></div><div id="acoes"></div>
         <button id="fullReport" class="fullbtn" type="button" disabled title="Em breve: relatório completo em PDF">📑 Gerar análise completa (em breve)</button>
       </div>
@@ -433,7 +433,13 @@ function gerarInsights(topico){
 // análise rica por IA carregada à parte (o painel já abriu com a análise por regras)
 async function loadAnalise(){
   $("#anaLoad").hidden=false;
-  try{const ia=await api("/api/analysis");if(ia&&(ia.resumo||(ia.acoes&&ia.acoes.length)))renderAnalysis(ia);}
+  try{
+    const ia=await api("/api/analysis");
+    if(ia&&(ia.resumo||(ia.acoes&&ia.acoes.length))){
+      renderAnalysis(ia);
+      if(ia.gerada_em){$("#anaStamp").textContent=" · análise do dia, gerada às "+ia.gerada_em;$("#anaStamp").hidden=false;}
+    }
+  }
   catch(e){/* mantém a análise por regras se a IA falhar/demorar */}
   finally{$("#anaLoad").hidden=true;}
 }

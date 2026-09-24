@@ -32,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from src import dashboard_data, analyst_ai, chat_history
+from src import dashboard_data, analyst_ai, chat_history, analysis_store
 from src.report_builder import collect_campaign_data
 
 STATIC = Path(__file__).parent / "static"
@@ -40,9 +40,8 @@ STATIC = Path(__file__).parent / "static"
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "*")
 ALLOWED_DOMAIN = os.getenv("ALLOWED_EMAIL_DOMAIN", "vertigo.com.br")
 CACHE_TTL = int(os.getenv("DASHBOARD_CACHE_TTL", "600"))  # 10 min (KPIs/números)
-# A análise da IA fica estável por mais tempo, para TODOS verem a MESMA leitura ao
-# longo do dia (não regenera a cada 10 min). Compartilhada entre todos os usuários.
-ANALYSIS_TTL = int(os.getenv("ANALYSIS_CACHE_TTL", "21600"))  # 6 h
+# A análise da IA é gerada 1x por dia e persistida (ver analysis_store): todos veem
+# a MESMA leitura ao longo do dia; ela renova quando vira o dia.
 
 app = FastAPI(title="Agente Mídia Paga — API", docs_url=None, redoc_url=None)
 app.add_middleware(
@@ -101,13 +100,29 @@ def _load(force: bool = False):
 
 
 def _load_analise_ia(force: bool = False):
-    """Análise rica por IA (parte lenta) — carregada à parte, com cache próprio."""
-    if not force and _cache_ia["analysis"] and (time.time() - _cache_ia["ts"] < ANALYSIS_TTL):
+    """Análise rica por IA: gerada 1x por dia e persistida (igual para todos e
+    estável ao longo do dia). Renova quando vira o dia."""
+    today = datetime.now(BRT).date().isoformat()
+    if not force and _cache_ia.get("analysis") and _cache_ia.get("day") == today:
         return _cache_ia["analysis"]
+    if not force:
+        try:
+            stored = analysis_store.get(today)
+        except Exception as exc:
+            stored = None
+            print(f"  aviso: não li a análise do dia: {exc}")
+        if stored:
+            _cache_ia.update(analysis=stored, day=today)
+            return stored
     raw, _ = _load()
     start, end = _period()
     analise = dashboard_data.build_analysis_ia(start, end, ref_date=end, data=raw)
-    _cache_ia.update(ts=time.time(), analysis=analise)
+    analise["gerada_em"] = datetime.now(BRT).strftime("%d/%m %H:%M")
+    try:
+        analysis_store.save(today, analise["gerada_em"], analise)
+    except Exception as exc:
+        print(f"  aviso: não persisti a análise do dia: {exc}")
+    _cache_ia.update(analysis=analise, day=today)
     return analise
 
 
