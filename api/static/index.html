@@ -299,7 +299,7 @@
           <li>Em qualquer ação, clique <b>“✨ Gerar insights”</b> para o agente aprofundar no chat.</li>
           <li>Use o <b>chat</b> “Pergunte ao agente” para perguntas livres (ex.: “qual campanha cortar primeiro?”).</li>
           <li>O <b>Histórico</b> (lateral do chat) guarda as <b>últimas 20 consultas</b> do time (com rolagem), para todos consultarem. Cada uma pode ser <b>deletada</b> no menu “⋯”.</li>
-          <li><b>Recolha os gráficos</b> que não quiser ver (botão de minimizar). A preferência fica salva.</li>
+          <li><b>Recolha os gráficos</b> que não quiser ver (botão de minimizar). Eles abrem por padrão a cada acesso.</li>
           <li>Abra a <b>planilha</b> completa pelo botão no topo.</li>
           <li>Clique em <b>“📑 Gerar relatório completo (PDF)”</b> (no card da análise) para abrir o relatório e salvá-lo como PDF.</li>
         </ol>
@@ -488,12 +488,9 @@ async function loadAnalise(){
 function setupCollapsibles(){
   document.querySelectorAll(".collapsible").forEach(card=>{
     if(card.dataset.bound)return; card.dataset.bound="1";
-    const key="mp_col_"+card.dataset.key;
-    let collapsed=false; try{collapsed=localStorage.getItem(key)==="1";}catch(e){}
-    card.classList.toggle("collapsed",collapsed);
+    card.classList.remove("collapsed");   // sempre começam ABERTOS a cada acesso
     card.querySelector(".chead").addEventListener("click",()=>{
-      const now=card.classList.toggle("collapsed");
-      try{localStorage.setItem(key,now?"1":"0");}catch(e){}
+      card.classList.toggle("collapsed"); // fecha/abre só nesta visita (não persiste)
     });
   });
 }
