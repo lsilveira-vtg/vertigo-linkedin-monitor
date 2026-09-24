@@ -57,13 +57,34 @@ def _serie_diaria(start: date, end: date) -> list[dict]:
     return serie
 
 
-def build_dashboard_data(start: date, end: date, ref_date: date | None = None,
-                         data: list[dict] | None = None) -> dict:
+def _period_label(start: date, end: date) -> str:
+    return f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
+
+
+def build_analysis_ia(start: date, end: date, ref_date: date | None = None,
+                      data: list[dict] | None = None) -> dict:
+    """Só a análise (IA) — parte lenta, carregada à parte para o painel abrir rápido."""
     ref_date = ref_date or end
-    period = f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
     if data is None:
         data = collect_campaign_data(start, end)
-    analysis = analyst.run_analysis(period, data, ref_date=ref_date)
+    a = analyst.run_analysis(_period_label(start, end), data, ref_date=ref_date)
+    return {
+        "resumo": a.resumo_executivo,
+        "acoes": a.acoes_prioritarias,
+        "rodape": getattr(a, "rodape", ""),
+    }
+
+
+def build_dashboard_data(start: date, end: date, ref_date: date | None = None,
+                         data: list[dict] | None = None, use_ia: bool = True) -> dict:
+    ref_date = ref_date or end
+    period = _period_label(start, end)
+    if data is None:
+        data = collect_campaign_data(start, end)
+    # use_ia=False usa só o motor de regras (rápido, sem chamar a IA) — mantém a
+    # saúde das campanhas e um resumo imediato; a análise rica da IA vem depois.
+    analysis = (analyst.run_analysis(period, data, ref_date=ref_date) if use_ia
+                else analyst.analyze(period, data, ref_date=ref_date))
     saude_by = {v.nome: v for v in analysis.campanhas}
 
     total_invest = sum(c.get("investimento_brl", 0) or 0 for c in data)

@@ -89,6 +89,18 @@
   .analysis.hero #resumo{margin:2px 0 14px}
   .analysis.hero .act{padding:12px 0;font-size:14px;gap:12px}
   .analysis.hero .act .n{width:22px;height:22px;font-size:12px}
+  .act .ac{flex:1;min-width:0}
+  .act .gi{margin-top:8px;display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;font-weight:700;
+    cursor:pointer;border:1px solid color-mix(in srgb,var(--accent) 32%,var(--border));background:var(--accent-weak);
+    color:var(--accent);border-radius:20px;padding:5px 12px;transition:background .15s,color .15s}
+  .act .gi:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .anaload{font-size:12px;font-weight:600;color:var(--accent);opacity:.85}
+  /* markdown leve (chat + análise) */
+  .md p{margin:0 0 .5em} .md>*:last-child{margin-bottom:0}
+  .md ul{margin:.25em 0 .55em;padding-left:18px} .md li{margin:.2em 0}
+  .md b{font-weight:700} .md i{font-style:italic}
+  .md .mh{font-weight:800;margin:.55em 0 .3em}
+  .msg.md{white-space:normal}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
   .card h2{font-size:14px;font-weight:700;margin:0;padding:14px 16px 0}
   .card .body{padding:14px 16px 16px}
@@ -162,8 +174,8 @@
     <div id="alert"></div>
     <section class="grid kpis" id="kpis"></section>
     <section class="card analysis hero">
-      <h2>Análise &amp; recomendações do agente</h2>
-      <div class="body"><p id="resumo"></p><div id="acoes"></div></div>
+      <h2>Análise &amp; recomendações do agente <span id="anaLoad" class="anaload" hidden>· aprofundando com IA…</span></h2>
+      <div class="body"><div id="resumo"></div><div id="acoes"></div></div>
     </section>
     <section class="grid charts">
       <div class="card chart-wide collapsible" data-key="pace"><button class="chead" type="button"><span class="ct">Gasto x teto ao longo do mês</span><span class="chev">▾</span></button><div class="body" id="chartPace"></div></div>
@@ -265,6 +277,7 @@ async function load(){
     return;
   }
   render();
+  loadAnalise();   // análise rica por IA vem em paralelo, sem travar o painel
 }
 function render(){
   const k=DATA.kpis;
@@ -283,10 +296,52 @@ function render(){
   const _tot=DATA.campaigns.reduce((s,c)=>s+(c.investimento||0),0);
   const _top2=[...DATA.campaigns].sort((a,b)=>b.investimento-a.investimento).slice(0,2).reduce((s,c)=>s+(c.investimento||0),0);
   $("#barsFoot").innerHTML=_tot?`<span>Total: <b>${BRL0(_tot)}</b> em <b>${DATA.campaigns.length}</b> campanhas</span><span>Top 2 = <b>${Math.round(_top2/_tot*100)}%</b> do gasto</span>`:"";
-  $("#resumo").textContent=DATA.analysis.resumo;
-  $("#acoes").innerHTML=DATA.analysis.acoes.map((a,i)=>`<div class="act"><span class="n">${i+1}</span><span>${a}</span></div>`).join("");
+  renderAnalysis(DATA.analysis||{});
   charts();
   rows();
+}
+// markdown leve e seguro (converte **negrito**, listas, ## títulos; escapa HTML)
+function mdEsc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+function md(t){
+  if(t==null||t==="")return"";
+  const inl=s=>mdEsc(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")
+                       .replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g,"$1<i>$2</i>")
+                       .replace(/`([^`]+?)`/g,"$1");
+  let out="",inUl=false;
+  for(let ln of String(t).split(/\r?\n/)){
+    ln=ln.trim();
+    if(!ln){if(inUl){out+="</ul>";inUl=false;}continue;}
+    let m;
+    if(m=ln.match(/^#{1,4}\s+(.+)$/)){if(inUl){out+="</ul>";inUl=false;}out+=`<div class="mh">${inl(m[1])}</div>`;continue;}
+    if(m=ln.match(/^(?:[-*•]|\d+[.)])\s+(.+)$/)){if(!inUl){out+="<ul>";inUl=true;}out+=`<li>${inl(m[1])}</li>`;continue;}
+    if(inUl){out+="</ul>";inUl=false;}
+    out+=`<p>${inl(ln)}</p>`;
+  }
+  if(inUl)out+="</ul>";
+  return out;
+}
+// mostra resumo + ações; cada ação ganha um botão "Gerar insights" que joga a
+// pergunta para o chat lá embaixo e o agente responde automaticamente.
+function renderAnalysis(a){
+  $("#resumo").innerHTML=md(a.resumo||"");
+  $("#acoes").innerHTML=(a.acoes||[]).map((x,i)=>{
+    const plain=String(x).replace(/[*#`]/g,"").replace(/\s+/g," ").trim();
+    return `<div class="act"><span class="n">${i+1}</span><div class="ac"><div class="md">${md(x)}</div>`
+      +`<button class="gi" type="button" data-q="${encodeURIComponent(plain)}">✨ Gerar insights</button></div></div>`;
+  }).join("");
+}
+function gerarInsights(topico){
+  const q=`Gere insights sobre este ponto: "${topico}". Traga o status atual, as melhorias possíveis e sugestões de otimização, com base nos dados das campanhas.`;
+  const box=document.querySelector(".chat");
+  if(box)box.scrollIntoView({behavior:"smooth",block:"start"});
+  ask(q);
+}
+// análise rica por IA carregada à parte (o painel já abriu com a análise por regras)
+async function loadAnalise(){
+  $("#anaLoad").hidden=false;
+  try{const ia=await api("/api/analysis");if(ia&&(ia.resumo||(ia.acoes&&ia.acoes.length)))renderAnalysis(ia);}
+  catch(e){/* mantém a análise por regras se a IA falhar/demorar */}
+  finally{$("#anaLoad").hidden=true;}
 }
 // cards de gráfico recolhíveis (lembra a preferência de cada pessoa no navegador)
 function setupCollapsibles(){
@@ -377,16 +432,23 @@ function rows(){
 }
 
 /* ---- chat ---- */
-function addMsg(role,text){const d=document.createElement("div");d.className="msg "+role;d.textContent=text;$("#chat").appendChild(d);$("#chat").scrollTop=$("#chat").scrollHeight;return d;}
+function addMsg(role,text){
+  const d=document.createElement("div");
+  d.className="msg "+role+(role==="a"?" md":"");
+  if(role==="a")d.innerHTML=md(text);else d.textContent=text;
+  $("#chat").appendChild(d);$("#chat").scrollTop=$("#chat").scrollHeight;return d;
+}
 async function ask(text){
   addMsg("u",text);const wait=addMsg("a","…");
-  try{const r=await api("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:text})});wait.textContent=r.answer;}
+  try{const r=await api("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:text})});wait.innerHTML=md(r.answer);}
   catch(e){wait.textContent="(não consegui responder agora)";}
+  $("#chat").scrollTop=$("#chat").scrollHeight;
 }
 
 /* ---- eventos ---- */
 $("#composer").addEventListener("submit",e=>{e.preventDefault();const v=$("#q").value.trim();if(v){ask(v);$("#q").value="";}});
 $("#suggest").addEventListener("click",e=>{const b=e.target.closest("button");if(b)ask(b.textContent);});
+$("#acoes").addEventListener("click",e=>{const b=e.target.closest(".gi");if(b)gerarInsights(decodeURIComponent(b.dataset.q));});
 $("#filter").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;filter=b.dataset.f;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));rows();});
 $("#refresh").addEventListener("click",load);
 $("#signout").addEventListener("click",()=>signout());

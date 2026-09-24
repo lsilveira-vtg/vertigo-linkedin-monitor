@@ -48,6 +48,7 @@ app.add_middleware(
 )
 
 _cache: dict = {"ts": 0, "raw": None, "dash": None}
+_cache_ia: dict = {"ts": 0, "analysis": None}
 
 
 # ---------- autenticação ----------
@@ -83,13 +84,26 @@ def _period():
 
 
 def _load(force: bool = False):
+    """Dados rápidos do painel (sem a IA): KPIs, orçamento, campanhas, gráficos.
+    A análise aqui vem do motor de regras (instantânea)."""
     if not force and _cache["dash"] and (time.time() - _cache["ts"] < CACHE_TTL):
         return _cache["raw"], _cache["dash"]
     start, end = _period()
     raw = collect_campaign_data(start, end)
-    dash = dashboard_data.build_dashboard_data(start, end, ref_date=end, data=raw)
+    dash = dashboard_data.build_dashboard_data(start, end, ref_date=end, data=raw, use_ia=False)
     _cache.update(ts=time.time(), raw=raw, dash=dash)
     return raw, dash
+
+
+def _load_analise_ia(force: bool = False):
+    """Análise rica por IA (parte lenta) — carregada à parte, com cache próprio."""
+    if not force and _cache_ia["analysis"] and (time.time() - _cache_ia["ts"] < CACHE_TTL):
+        return _cache_ia["analysis"]
+    raw, _ = _load()
+    start, end = _period()
+    analise = dashboard_data.build_analysis_ia(start, end, ref_date=end, data=raw)
+    _cache_ia.update(ts=time.time(), analysis=analise)
+    return analise
 
 
 # ---------- rotas ----------
@@ -113,6 +127,12 @@ def config_public():
 def dashboard(_: str = Depends(current_user)):
     _, dash = _load()
     return dash
+
+
+@app.get("/api/analysis")
+def analysis(_: str = Depends(current_user)):
+    """Análise rica por IA (carregada à parte para o painel abrir rápido)."""
+    return _load_analise_ia()
 
 
 class Pergunta(BaseModel):
