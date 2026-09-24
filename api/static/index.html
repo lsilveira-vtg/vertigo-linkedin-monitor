@@ -58,7 +58,7 @@
   .modal-body li{margin:6px 0} .modal-body b{font-weight:700}
   .modal-note{margin-top:18px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px}
   main{padding:20px 0 44px} .grid{display:grid;gap:16px}
-  .updated{font-size:12px;color:var(--faint);margin-bottom:14px}
+  .updated{font-size:12px;color:var(--muted);margin-bottom:14px}
   .alert{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:13px;
     background:var(--crit-bg);border:1px solid color-mix(in srgb,var(--crit) 40%,var(--border));margin-bottom:18px}
   .alert b{color:var(--crit)} .alert p{margin:2px 0 0;font-size:13.5px}
@@ -148,6 +148,11 @@
   .analysis .body{font-size:13.5px} .act{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);font-size:13px}
   .act .n{width:20px;height:20px;border-radius:6px;background:var(--navy);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex:none}
   .chat{display:flex;flex-direction:column;min-height:440px}
+  .chat-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 0}
+  .chat-head h2{padding:0;margin:0}
+  .newconv{font:inherit;font-size:12.5px;font-weight:700;border:1px solid color-mix(in srgb,var(--accent) 32%,var(--border));
+    background:var(--accent-weak);color:var(--accent);border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+  .newconv:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
   .chat-wrap{flex:1;display:grid;grid-template-columns:1fr 250px;min-height:0}
   .chat-main{display:flex;flex-direction:column;min-width:0}
   .chat .body{display:flex;flex-direction:column;gap:11px;flex:1;overflow-y:auto;min-height:300px;max-height:520px}
@@ -240,7 +245,7 @@
       </tr></thead><tbody id="rows"></tbody></table></div>
     </section>
     <section class="card chat">
-      <h2 style="padding:14px 16px 0">Pergunte ao agente</h2>
+      <div class="chat-head"><h2>Pergunte ao agente</h2><button class="newconv" id="newConv" type="button">✚ Nova conversa</button></div>
       <div class="chat-wrap">
         <div class="chat-main">
           <div class="body" id="chat"><div class="msg a">Oi! Posso responder sobre gasto, CPL, campanhas e orçamento, com base nos dados atuais. O que você quer saber?</div></div>
@@ -556,37 +561,48 @@ function addMsg(role,text){
   $("#chat").appendChild(d);$("#chat").scrollTop=$("#chat").scrollHeight;return d;
 }
 async function ask(text){
+  if(!convId) convId=newConvId();       // abre conversa nova só quando não há uma em andamento
   addMsg("u",text);const wait=addMsg("a","…");
-  try{const r=await api("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:text})});wait.innerHTML=md(r.answer);loadHistory();}
+  try{const r=await api("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:text,conversation_id:convId})});if(r.conversation_id)convId=r.conversation_id;wait.innerHTML=md(r.answer);loadHistory();}
   catch(e){wait.textContent="(não consegui responder agora)";}
   $("#chat").scrollTop=$("#chat").scrollHeight;
 }
 
-/* ---- histórico compartilhado (últimas 20 consultas do time) ---- */
-let HIST=[];
+/* ---- histórico do chat, agrupado por CONVERSA (nova entrada só em conversa nova) ---- */
+let HIST=[], convId=null;
+function newConvId(){try{return crypto.randomUUID().replace(/-/g,"").slice(0,12);}catch(e){return "c"+Date.now();}}
+function novaConversa(){
+  convId=null;
+  $("#chat").innerHTML='<div class="msg a md"><p>Nova conversa. O que você quer saber sobre as campanhas?</p></div>';
+  const q=$("#q"); if(q)q.focus();
+}
 async function loadHistory(){
   try{const list=await api("/api/history");renderHistory(Array.isArray(list)?list:[]);}
   catch(e){/* histórico é auxiliar; se falhar, não atrapalha o chat */}
 }
 function renderHistory(list){
-  HIST=list||[];
+  HIST=list||[];                       // já vem da mais recente para a mais antiga
   const el=$("#histList");
-  if(!HIST.length){el.innerHTML='<div class="hist-empty">Ainda sem consultas.</div>';return;}
-  el.innerHTML=HIST.map((h,i)=>({h,i})).reverse().map(({h,i})=>{
-    const meta=[h.by,h.ts].filter(Boolean).join(" · ");
+  if(!HIST.length){el.innerHTML='<div class="hist-empty">Ainda sem conversas.</div>';return;}
+  el.innerHTML=HIST.map((h,i)=>{
+    const extra=(h.count&&h.count>1)?(h.count+" mensagens"):null;
+    const meta=[h.by,h.ts,extra].filter(Boolean).join(" · ");
     const menu=h.id?`<button class="hist-dots" type="button" title="Opções">⋯</button>`
       +`<div class="hist-menu" hidden><button class="hist-del" data-id="${mdEsc(h.id)}" type="button">🗑 Deletar</button></div>`:"";
-    return `<div class="hist-item"><button class="hist-open" data-i="${i}" type="button"><div class="ht">${mdEsc(h.q||"")}</div>${meta?`<div class="hm">${mdEsc(meta)}</div>`:""}</button>${menu}</div>`;
+    return `<div class="hist-item"><button class="hist-open" data-i="${i}" type="button"><div class="ht">${mdEsc(h.title||h.q||"")}</div>${meta?`<div class="hm">${mdEsc(meta)}</div>`:""}</button>${menu}</div>`;
   }).join("");
 }
 function closeHistMenus(){document.querySelectorAll(".hist-menu").forEach(m=>m.hidden=true);}
 function showFromHistory(i){
-  const h=HIST[i]; if(!h)return;
-  addMsg("u",h.q); addMsg("a",h.a||"");
+  const c=HIST[i]; if(!c)return;
+  convId=c.id;                          // clicar abre e CONTINUA aquela conversa
+  $("#chat").innerHTML="";
+  (c.msgs||[]).forEach(m=>{ addMsg("u",m.q); if(m.a) addMsg("a",m.a); });
   document.querySelector(".chat").scrollIntoView({behavior:"smooth",block:"start"});
 }
 async function delHistory(id){
   closeHistMenus();
+  if(convId===id) convId=null;          // apagou a conversa aberta -> começa nova
   try{await api("/api/history/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id})});loadHistory();}
   catch(e){HIST=HIST.filter(h=>h.id!==id);renderHistory(HIST);}   // preview/offline: remove local
 }
@@ -602,6 +618,7 @@ $("#histList").addEventListener("click",e=>{
   const open=e.target.closest(".hist-open");if(open)showFromHistory(+open.dataset.i);
 });
 document.addEventListener("click",e=>{if(!e.target.closest(".hist-dots")&&!e.target.closest(".hist-menu"))closeHistMenus();});
+$("#newConv").addEventListener("click",novaConversa);
 $("#fullReport").addEventListener("click",()=>window.open("/report","_blank","noopener"));
 $("#helpBtn").addEventListener("click",()=>$("#help").hidden=false);
 $("#helpClose").addEventListener("click",()=>$("#help").hidden=true);

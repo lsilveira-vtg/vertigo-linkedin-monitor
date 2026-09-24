@@ -20,6 +20,7 @@ Variáveis de ambiente:
 import os
 import sys
 import time
+import uuid
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -171,6 +172,7 @@ def analysis(_: str = Depends(current_user)):
 
 class Pergunta(BaseModel):
     question: str
+    conversation_id: str | None = None
 
 
 @app.post("/api/ask")
@@ -178,14 +180,15 @@ def ask(p: Pergunta, user: str = Depends(current_user)):
     q = (p.question or "").strip()
     if not q:
         raise HTTPException(422, "Pergunta vazia.")
+    cid = (p.conversation_id or "").strip() or uuid.uuid4().hex[:12]
     raw, dash = _load()
     resposta = analyst_ai.answer_question(q, raw, dash.get("budget"))
     try:
-        chat_history.add(q, resposta, user.split("@")[0],
+        chat_history.add(cid, q, resposta, user.split("@")[0],
                          datetime.now(BRT).strftime("%d/%m %H:%M"))
     except Exception as exc:
         print(f"  aviso: não salvei no histórico: {exc}")
-    return {"answer": resposta, "asked_by": user}
+    return {"answer": resposta, "asked_by": user, "conversation_id": cid}
 
 
 @app.get("/api/history")
