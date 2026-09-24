@@ -58,6 +58,10 @@
   .modal-body li{margin:6px 0} .modal-body b{font-weight:700}
   .modal-note{margin-top:18px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px}
   main{padding:20px 0 44px} .grid{display:grid;gap:16px}
+  .periodbar{display:flex;align-items:center;gap:9px;margin:16px 0 6px}
+  .periodbar .pl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .msel{font:inherit;font-size:13px;font-weight:600;color:var(--text);background:var(--surface);
+    border:1px solid var(--border);border-radius:9px;padding:7px 30px 7px 11px;cursor:pointer}
   .updated{font-size:12px;color:var(--muted);margin-bottom:14px}
   .alert{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:13px;
     background:var(--crit-bg);border:1px solid color-mix(in srgb,var(--crit) 40%,var(--border));margin-bottom:18px}
@@ -218,6 +222,7 @@
   </div></header>
 
   <main class="wrap">
+    <div class="periodbar"><span class="pl">Período</span><select id="monthSel" class="msel"></select></div>
     <div class="updated" id="updated"></div>
     <div id="alert"></div>
     <section class="grid kpis" id="kpis"></section>
@@ -373,7 +378,21 @@ function signout(msg){
 async function enter(){
   $("#login").hidden=true;$("#app").hidden=false;
   try{$("#who").textContent=jwtPayload(TOKEN).email||"";}catch(e){}
+  await loadMonths();
   await load();
+}
+
+/* ---- seleção de período (mês) ---- */
+let curMonth=null;   // null = mês corrente
+const MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+function mesLabel(ym){const p=String(ym).split("-");const nome=MESES[(+p[1]||1)-1]||p[1];return nome.charAt(0).toUpperCase()+nome.slice(1)+"/"+p[0];}
+const qsMonth=()=>curMonth?("?month="+encodeURIComponent(curMonth)):"";
+async function loadMonths(){
+  try{
+    const arr=await api("/api/months");
+    if(!Array.isArray(arr)||!arr.length)return;
+    $("#monthSel").innerHTML=arr.map((m,i)=>`<option value="${m}">${mesLabel(m)}${i===0?" (atual)":""}</option>`).join("");
+  }catch(e){/* seletor é auxiliar */}
 }
 
 /* ---- dashboard ---- */
@@ -381,7 +400,7 @@ async function load(){
   $("#alert").innerHTML="";
   $("#kpis").innerHTML='<div class="skel">Carregando dados…</div>';
   ["bars","resumo","acoes","rows"].forEach(id=>$("#"+id).innerHTML="");
-  try{DATA=await api("/api/dashboard");}
+  try{DATA=await api("/api/dashboard"+qsMonth());}
   catch(e){
     if(e.message==="auth")return;
     $("#kpis").innerHTML=`<div class="skel">Não consegui carregar os dados agora.<div style="font-size:12px;margin:6px 0 12px;color:var(--faint)">${e.message}</div><button class="btn" id="retry">Tentar de novo</button></div>`;
@@ -456,10 +475,10 @@ function gerarInsights(topico){
 async function loadAnalise(){
   $("#anaLoad").hidden=false;
   try{
-    const ia=await api("/api/analysis");
+    const ia=await api("/api/analysis"+qsMonth());
     if(ia&&(ia.resumo||(ia.acoes&&ia.acoes.length))){
       renderAnalysis(ia);
-      if(ia.gerada_em){$("#anaStamp").textContent=" · análise do dia, gerada às "+ia.gerada_em;$("#anaStamp").hidden=false;}
+      if(ia.gerada_em){$("#anaStamp").textContent=" · "+(curMonth?("análise de "+mesLabel(curMonth)):"análise do dia")+", gerada às "+ia.gerada_em;$("#anaStamp").hidden=false;}
     } else { renderAnalysis(DATA.analysis||{}); }   // fallback raro
   }
   catch(e){ renderAnalysis(DATA.analysis||{}); }    // se a IA falhar de vez, mostra a de regras
@@ -563,7 +582,7 @@ function addMsg(role,text){
 async function ask(text){
   if(!convId) convId=newConvId();       // abre conversa nova só quando não há uma em andamento
   addMsg("u",text);const wait=addMsg("a","…");
-  try{const r=await api("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:text,conversation_id:convId})});if(r.conversation_id)convId=r.conversation_id;wait.innerHTML=md(r.answer);loadHistory();}
+  try{const r=await api("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:text,conversation_id:convId,month:curMonth})});if(r.conversation_id)convId=r.conversation_id;wait.innerHTML=md(r.answer);loadHistory();}
   catch(e){wait.textContent="(não consegui responder agora)";}
   $("#chat").scrollTop=$("#chat").scrollHeight;
 }
@@ -619,6 +638,7 @@ $("#histList").addEventListener("click",e=>{
 });
 document.addEventListener("click",e=>{if(!e.target.closest(".hist-dots")&&!e.target.closest(".hist-menu"))closeHistMenus();});
 $("#newConv").addEventListener("click",novaConversa);
+$("#monthSel").addEventListener("change",e=>{const cur=e.target.options[0]?e.target.options[0].value:null;curMonth=(e.target.value===cur)?null:e.target.value;load();});
 $("#fullReport").addEventListener("click",()=>window.open("/report","_blank","noopener"));
 $("#helpBtn").addEventListener("click",()=>$("#help").hidden=false);
 $("#helpClose").addEventListener("click",()=>$("#help").hidden=true);

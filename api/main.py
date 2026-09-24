@@ -17,6 +17,7 @@ Variáveis de ambiente:
   ALLOWED_EMAIL_DOMAIN dominio aceito (default vertigo.com.br)
   API_TOKEN            token estático de teste (usado só se GOOGLE_OAUTH_CLIENT_ID não estiver setado)
 """
+import calendar
 import os
 import sys
 import time
@@ -52,8 +53,10 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-_cache: dict = {"ts": 0, "raw": None, "dash": None}
-_cache_ia: dict = {"ts": 0, "analysis": None}
+# Caches por mês (chave "AAAA-MM"): permitem consultar meses anteriores sem
+# martelar o LinkedIn. A análise tem cache próprio por período.
+_data_cache: dict = {}   # "AAAA-MM" -> {ts, raw, dash}
+_ia_cache: dict = {}     # chave da análise -> {key, analysis}
 
 
 # ---------- autenticação ----------
@@ -82,49 +85,79 @@ def current_user(authorization: str = Header(default="")) -> str:
 
 
 # ---------- dados (com cache curto para não martelar o LinkedIn) ----------
-def _period():
-    end = date.today() - timedelta(days=1)
-    start = end.replace(day=1)
-    return start, end
+def _current_month() -> str:
+    return date.today().strftime("%Y-%m")
 
 
-def _load(force: bool = False):
-    """Dados rápidos do painel (sem a IA): KPIs, orçamento, campanhas, gráficos.
+def _period(month: str | None = None):
+    """Intervalo do mês. Mês corrente vai até ontem; mês passado, até o fim do mês."""
+    today = date.today()
+    if not month:
+        end = today - timedelta(days=1)
+        return end.replace(day=1), end
+    y, m = (int(x) for x in month.split("-"))
+    start = date(y, m, 1)
+    last = date(y, m, calendar.monthrange(y, m)[1])
+    end = min(last, today - timedelta(days=1))
+    return start, max(start, end)
+
+
+def _load(month: str | None = None, force: bool = False):
+    """Dados rápidos do painel (sem a IA) para o mês pedido (padrão: corrente).
     A análise aqui vem do motor de regras (instantânea)."""
-    if not force and _cache["dash"] and (time.time() - _cache["ts"] < CACHE_TTL):
-        return _cache["raw"], _cache["dash"]
-    start, end = _period()
+    mk = month or _current_month()
+    c = _data_cache.get(mk)
+    if not force and c and (time.time() - c["ts"] < CACHE_TTL):
+        return c["raw"], c["dash"]
+    start, end = _period(month)
     raw = collect_campaign_data(start, end)
     dash = dashboard_data.build_dashboard_data(start, end, ref_date=end, data=raw, use_ia=False)
-    _cache.update(ts=time.time(), raw=raw, dash=dash)
+    _data_cache[mk] = {"ts": time.time(), "raw": raw, "dash": dash}
     return raw, dash
 
 
-def _load_analise_ia(force: bool = False):
-    """Análise rica por IA: gerada 1x por dia e persistida (igual para todos e
-    estável ao longo do dia). Renova quando vira o dia."""
-    today = datetime.now(BRT).date().isoformat()
-    if not force and _cache_ia.get("analysis") and _cache_ia.get("day") == today:
-        return _cache_ia["analysis"]
+def _load_analise_ia(month: str | None = None, force: bool = False):
+    """Análise rica por IA, persistida e estável. Mês corrente: 1x por dia (renova
+    diário). Mês passado: fixa (gerada uma vez, o dado já é final)."""
+    mk = month or _current_month()
+    if mk == _current_month():
+        key = datetime.now(BRT).date().isoformat()   # diária no mês corrente
+    else:
+        key = "M" + mk                                # fixa nos meses anteriores
+    c = _ia_cache.get(key)
+    if not force and c:
+        return c["analysis"]
     if not force:
         try:
-            stored = analysis_store.get(today)
+            stored = analysis_store.get(key)
         except Exception as exc:
             stored = None
-            print(f"  aviso: não li a análise do dia: {exc}")
+            print(f"  aviso: não li a análise ({key}): {exc}")
         if stored:
-            _cache_ia.update(analysis=stored, day=today)
+            _ia_cache[key] = {"analysis": stored}
             return stored
-    raw, _ = _load()
-    start, end = _period()
+    raw, _ = _load(month)
+    start, end = _period(month)
     analise = dashboard_data.build_analysis_ia(start, end, ref_date=end, data=raw)
     analise["gerada_em"] = datetime.now(BRT).strftime("%d/%m %H:%M")
     try:
-        analysis_store.save(today, analise["gerada_em"], analise)
+        analysis_store.save(key, analise["gerada_em"], analise)
     except Exception as exc:
-        print(f"  aviso: não persisti a análise do dia: {exc}")
-    _cache_ia.update(analysis=analise, day=today)
+        print(f"  aviso: não persisti a análise ({key}): {exc}")
+    _ia_cache[key] = {"analysis": analise}
     return analise
+
+
+def _meses_disponiveis(n: int = 6) -> list[str]:
+    """Últimos n meses (mais recente primeiro), para o seletor de período."""
+    y, m = date.today().year, date.today().month
+    out = []
+    for _ in range(n):
+        out.append(f"{y:04d}-{m:02d}")
+        m -= 1
+        if m == 0:
+            m, y = 12, y - 1
+    return out
 
 
 # ---------- rotas ----------
@@ -158,21 +191,28 @@ def config_public():
     }
 
 
+@app.get("/api/months")
+def months(_: str = Depends(current_user)):
+    """Meses disponíveis para consulta (mais recente primeiro)."""
+    return _meses_disponiveis()
+
+
 @app.get("/api/dashboard")
-def dashboard(_: str = Depends(current_user)):
-    _, dash = _load()
+def dashboard(month: str | None = None, _: str = Depends(current_user)):
+    _, dash = _load(month)
     return dash
 
 
 @app.get("/api/analysis")
-def analysis(_: str = Depends(current_user)):
+def analysis(month: str | None = None, _: str = Depends(current_user)):
     """Análise rica por IA (carregada à parte para o painel abrir rápido)."""
-    return _load_analise_ia()
+    return _load_analise_ia(month)
 
 
 class Pergunta(BaseModel):
     question: str
     conversation_id: str | None = None
+    month: str | None = None
 
 
 @app.post("/api/ask")
@@ -181,7 +221,7 @@ def ask(p: Pergunta, user: str = Depends(current_user)):
     if not q:
         raise HTTPException(422, "Pergunta vazia.")
     cid = (p.conversation_id or "").strip() or uuid.uuid4().hex[:12]
-    raw, dash = _load()
+    raw, dash = _load(p.month)
     resposta = analyst_ai.answer_question(q, raw, dash.get("budget"))
     try:
         chat_history.add(cid, q, resposta, user.split("@")[0],
