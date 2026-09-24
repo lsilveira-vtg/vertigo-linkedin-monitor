@@ -248,7 +248,7 @@
           <form class="composer" id="composer"><input id="q" placeholder="Escreva sua pergunta…" autocomplete="off"><button>Enviar</button></form>
         </div>
         <aside class="hist">
-          <div class="hist-h">Histórico <span>últimas 8 consultas do time</span></div>
+          <div class="hist-h">Histórico <span>últimas 20 consultas do time</span></div>
           <div class="hist-list" id="histList"><div class="hist-empty">Ainda sem consultas.</div></div>
         </aside>
       </div>
@@ -282,7 +282,7 @@
           <li>Leia a <b>Análise &amp; recomendações do agente</b> (síntese + ações prioritárias).</li>
           <li>Em qualquer ação, clique <b>“✨ Gerar insights”</b> para o agente aprofundar no chat.</li>
           <li>Use o <b>chat</b> “Pergunte ao agente” para perguntas livres (ex.: “qual campanha cortar primeiro?”).</li>
-          <li>O <b>Histórico</b> (lateral do chat) guarda as <b>últimas 8 consultas</b> do time, para todos consultarem.</li>
+          <li>O <b>Histórico</b> (lateral do chat) guarda as <b>últimas 20 consultas</b> do time (com rolagem), para todos consultarem. Cada uma pode ser <b>deletada</b> no menu “⋯”.</li>
           <li><b>Recolha os gráficos</b> que não quiser ver (botão de minimizar) — a preferência fica salva.</li>
           <li>Abra a <b>planilha</b> completa pelo botão no topo.</li>
         </ol>
@@ -371,7 +371,7 @@ async function load(){
   }
   render();
   loadAnalise();   // análise rica por IA vem em paralelo, sem travar o painel
-  loadHistory();   // histórico compartilhado das últimas 8 consultas
+  loadHistory();   // histórico compartilhado das últimas 20 consultas
 }
 function render(){
   const k=DATA.kpis;
@@ -539,7 +539,7 @@ async function ask(text){
   $("#chat").scrollTop=$("#chat").scrollHeight;
 }
 
-/* ---- histórico compartilhado (últimas 8 consultas do time) ---- */
+/* ---- histórico compartilhado (últimas 20 consultas do time) ---- */
 let HIST=[];
 async function loadHistory(){
   try{const list=await api("/api/history");renderHistory(Array.isArray(list)?list:[]);}
