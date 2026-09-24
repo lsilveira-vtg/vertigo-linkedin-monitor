@@ -92,6 +92,9 @@ português "ativa"/"pausada"/"concluída" (NUNCA "ACTIVE"/"PAUSED"/"COMPLETED").
 - O campo "resumo_executivo" é uma SÍNTESE bem organizada em markdown: 1 frase de diagnóstico; \
 depois um bloco "**O que está funcionando**" e um "**O que precisa melhorar**", curtos, com \
 quebras de linha e **negrito** nos números e nomes de campanha. Denso, organizado e fácil de ler.
+- O campo "acoes_prioritarias" deve ter SEMPRE de 4 a 6 itens (idealmente 5): ações concretas, \
+curtas e acionáveis (o que fazer e em qual campanha), ordenadas da mais para a menos urgente. \
+Liste as ações mesmo que o tema já apareça no resumo, o resumo NÃO substitui a lista de ações.
 
 Responda em português do Brasil, profissional, objetivo e em bullets."""
 
