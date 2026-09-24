@@ -101,15 +101,17 @@ def build_html_report(period_label: str, campaign_data: list[dict],
  th:first-child,td.nm{{text-align:left}} td{{padding:10px;border-bottom:1px solid #eef1f6;font-variant-numeric:tabular-nums}} td.r{{text-align:right}}
  .nm{{font-weight:600}} .t{{font-size:9.5px;font-weight:700;color:{ACCENT};background:#e8f0fc;padding:1px 5px;border-radius:4px}}
  .card ol{{margin:0;padding-left:20px}} .card li{{margin:7px 0;font-size:14px}}
- .sum{{font-size:14px}} .rod{{color:#5c6879;font-size:12px;margin-top:14px}}
+ .sum{{font-size:15px;line-height:1.6}} .rod{{color:#5c6879;font-size:12px;margin-top:14px}}
+ .hero{{border-color:#cfe0fb;border-left:4px solid {ACCENT};background:#fbfdff}}
+ .hero h2{{font-size:16px}} .hero li{{font-size:14.5px}}
  .foot{{color:#8a93a3;font-size:12px;text-align:center;margin-top:8px}}
  @media(max-width:640px){{.kpis{{grid-template-columns:repeat(2,1fr)}} .tbl{{overflow-x:auto}}}}
 </style></head><body><div class="wrap">
  <div class="head"><h1>Vertigo · Mídia Paga LinkedIn</h1><p>Report do período {period_label} · gerado pelo agente</p></div>
  {alert}
  <div class="kpis">{kpi_html}</div>
- <div class="card"><h2>Análise do agente</h2><p class="sum">{analysis.resumo_executivo}</p>{rodape}</div>
- <div class="card"><h2>Ações prioritárias</h2><ol>{acts}</ol></div>
+ <div class="card hero"><h2>Análise &amp; recomendações do agente</h2><p class="sum">{analysis.resumo_executivo}</p>{rodape}</div>
+ <div class="card hero"><h2>Ações prioritárias</h2><ol>{acts}</ol></div>
  <div class="card"><h2>Campanhas</h2><div class="tbl"><table>
    <tr><th>Campanha</th><th>Status</th><th>Invest.</th><th>Leads</th><th>CPL</th><th>Cliques</th><th>CPC</th><th>CTR</th></tr>
    {rows}</table></div></div>

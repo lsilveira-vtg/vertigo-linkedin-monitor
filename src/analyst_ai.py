@@ -154,6 +154,22 @@ RECUSA_FORA_ESCOPO = (
     "(gasto, orçamento, CPL, desempenho, otimização). Pode perguntar sobre isso. 🙂"
 )
 
+# Trava rígida (não depende da IA): assuntos de segurança/hacking são recusados
+# ANTES de chamar o modelo. É a "trava" que o time pediu para segurança.
+_BLOQUEIO_SEGURANCA = re.compile(
+    r"\b(?:"
+    r"senhas?|passwords?|api[\s-]?keys?|chave\s+de\s+api|access[\s-]?tokens?|"
+    r"hack\w*|exploit\w*|vulnerabilidade\w*|cve[\s-]?\d|"
+    r"malware|ransomware|phishing|firewall|"
+    r"sql\s*injection|xss|ddos|backdoor|pentest|engenharia\s+social|"
+    r"criptografi\w*|descriptografar|quebrar\s+senhas?|bypass\w*"
+    r")\b", re.I,
+)
+
+
+def _bloqueado_por_seguranca(question: str) -> bool:
+    return bool(_BLOQUEIO_SEGURANCA.search(question or ""))
+
 ASK_SYSTEM = SYSTEM_PROMPT + (
     "\n\n== MODO CHAT DO PAINEL (regras rígidas) ==\n"
     "Você está respondendo UMA pergunta do time no chat do painel de mídia paga.\n"
@@ -179,6 +195,10 @@ def answer_question(question: str, campaign_data: list[dict], budgets: dict | No
     Usa a IA se houver ANTHROPIC_API_KEY; senão devolve um aviso simples.
     O custo é registrado normalmente (aba Custos IA).
     """
+    # Trava rígida antes de qualquer coisa: segurança/hacking nunca chega na IA.
+    if _bloqueado_por_seguranca(question):
+        return RECUSA_FORA_ESCOPO
+
     if not config.ANTHROPIC_API_KEY:
         return ("A resposta ao vivo por IA está indisponível (sem chave configurada). "
                 "Consulte os KPIs e a tabela de campanhas no painel.")

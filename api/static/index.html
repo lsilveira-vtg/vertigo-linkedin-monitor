@@ -53,8 +53,7 @@
   .kpi .lab{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   .kpi .val{font-size:29px;font-weight:800;letter-spacing:-.02em;margin-top:7px;line-height:1}
   .kpi .sub{font-size:12px;color:var(--muted);margin-top:6px} .kpi.crit .val{color:var(--crit)}
-  .two{grid-template-columns:1.15fr 1fr;margin-bottom:16px}
-  .charts{grid-template-columns:1fr 1fr;margin-bottom:16px}
+  .charts{grid-template-columns:1fr 1fr;margin-bottom:16px;align-items:start}
   .charts .chart-wide{grid-column:1/-1}
   .chart-svg{width:100%;height:auto;display:block;overflow:visible}
   .chart-legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:12px;font-size:12px;color:var(--muted)}
@@ -66,21 +65,30 @@
   .cpl-row .tk{flex:1;height:20px;background:var(--surface-2);border-radius:6px;overflow:hidden}
   .cpl-row .fl{height:100%;border-radius:6px}
   .cpl-row .vl{width:66px;text-align:right;flex:none;font-variant-numeric:tabular-nums;font-weight:600}
-  /* rodapé do card de barras (preenche o espaço, alinha altura com a análise) */
-  .two .bars-card{display:flex;flex-direction:column}
-  .two .bars-card>.body{flex:1}
-  .bars-foot{margin-top:auto;padding:12px 16px 15px;border-top:1px solid var(--border);
+  /* rodapé do card de barras (total + concentração do gasto) */
+  .bars-foot{padding:12px 16px 15px;border-top:1px solid var(--border);
     font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;gap:10px 16px;flex-wrap:wrap}
   .bars-foot b{color:var(--text)}
   /* cards recolhíveis (gráficos) */
   .collapsible .chead{display:flex;align-items:center;justify-content:space-between;width:100%;gap:10px;
-    background:none;border:0;cursor:pointer;font:inherit;color:var(--text);padding:14px 16px;text-align:left}
+    background:none;border:0;cursor:pointer;font:inherit;color:var(--text);padding:13px 14px;text-align:left;
+    border-radius:14px;transition:background .15s}
+  .collapsible .chead:hover{background:var(--surface-2)}
   .collapsible .chead .ct{font-size:14px;font-weight:700}
-  .collapsible .chev{color:var(--muted);transition:transform .2s;font-size:12px;flex:none}
+  .collapsible .chev{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;flex:none;
+    background:var(--accent-weak);border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border));
+    color:var(--accent);font-size:14px;font-weight:800;line-height:1;transition:transform .2s,background .15s,color .15s}
+  .collapsible .chead:hover .chev{background:var(--accent);color:#fff}
   .collapsible.collapsed .chev{transform:rotate(-90deg)}
   .collapsible .body{padding-top:2px}
   .collapsible.collapsed .body{display:none}
   .collapsible.collapsed{padding-bottom:2px}
+  /* análise em destaque (o foco do agente é a consultoria) */
+  .analysis.hero .body{font-size:15px;line-height:1.65;padding:16px 20px 18px}
+  .analysis.hero h2{padding:16px 20px 0;font-size:15px}
+  .analysis.hero #resumo{margin:2px 0 14px}
+  .analysis.hero .act{padding:12px 0;font-size:14px;gap:12px}
+  .analysis.hero .act .n{width:22px;height:22px;font-size:12px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
   .card h2{font-size:14px;font-weight:700;margin:0;padding:14px 16px 0}
   .card .body{padding:14px 16px 16px}
@@ -105,8 +113,8 @@
   .t{font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-weak);padding:1px 6px;border-radius:5px;margin-left:2px}
   .analysis .body{font-size:13.5px} .act{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);font-size:13px}
   .act .n{width:20px;height:20px;border-radius:6px;background:var(--navy);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex:none}
-  .chat{display:flex;flex-direction:column;min-height:360px}
-  .chat .body{display:flex;flex-direction:column;gap:11px;flex:1;overflow-y:auto;max-height:420px}
+  .chat{display:flex;flex-direction:column;min-height:440px}
+  .chat .body{display:flex;flex-direction:column;gap:11px;flex:1;overflow-y:auto;min-height:300px;max-height:520px}
   .msg{max-width:88%;padding:10px 13px;border-radius:13px;font-size:13px;line-height:1.45;white-space:pre-wrap}
   .msg.u{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
   .msg.a{align-self:flex-start;background:var(--surface-2);border:1px solid var(--border);border-bottom-left-radius:4px}
@@ -122,7 +130,7 @@
   .composer button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:0 15px;font-weight:600;cursor:pointer}
   .skel{grid-column:1/-1;color:var(--muted);padding:34px;text-align:center}
   .skel .btn{margin-top:2px}
-  @media(max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.charts{grid-template-columns:1fr}}
+  @media(max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -153,14 +161,17 @@
     <div class="updated" id="updated"></div>
     <div id="alert"></div>
     <section class="grid kpis" id="kpis"></section>
-    <section class="grid two">
-      <div class="card bars-card"><h2>Gasto por campanha</h2><div class="body" id="bars"></div><div class="bars-foot" id="barsFoot"></div></div>
-      <div class="card analysis"><h2>Análise do agente</h2><div class="body"><p id="resumo"></p><div id="acoes"></div></div></div>
+    <section class="card analysis hero">
+      <h2>Análise &amp; recomendações do agente</h2>
+      <div class="body"><p id="resumo"></p><div id="acoes"></div></div>
     </section>
     <section class="grid charts">
       <div class="card chart-wide collapsible" data-key="pace"><button class="chead" type="button"><span class="ct">Gasto x teto ao longo do mês</span><span class="chev">▾</span></button><div class="body" id="chartPace"></div></div>
       <div class="card collapsible" data-key="cpl"><button class="chead" type="button"><span class="ct">CPL por campanha</span><span class="chev">▾</span></button><div class="body" id="chartCpl"></div></div>
       <div class="card collapsible" data-key="donut"><button class="chead" type="button"><span class="ct">Distribuição do gasto</span><span class="chev">▾</span></button><div class="body" id="chartDonut"></div></div>
+    </section>
+    <section class="card bars-card" style="margin-bottom:16px">
+      <h2>Gasto por campanha</h2><div class="body" id="bars"></div><div class="bars-foot" id="barsFoot"></div>
     </section>
     <section class="card" style="margin-bottom:16px">
       <h2 style="padding:14px 16px 12px">Campanhas</h2>
