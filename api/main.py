@@ -37,7 +37,10 @@ STATIC = Path(__file__).parent / "static"
 
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "*")
 ALLOWED_DOMAIN = os.getenv("ALLOWED_EMAIL_DOMAIN", "vertigo.com.br")
-CACHE_TTL = int(os.getenv("DASHBOARD_CACHE_TTL", "600"))  # 10 min
+CACHE_TTL = int(os.getenv("DASHBOARD_CACHE_TTL", "600"))  # 10 min (KPIs/números)
+# A análise da IA fica estável por mais tempo, para TODOS verem a MESMA leitura ao
+# longo do dia (não regenera a cada 10 min). Compartilhada entre todos os usuários.
+ANALYSIS_TTL = int(os.getenv("ANALYSIS_CACHE_TTL", "21600"))  # 6 h
 
 app = FastAPI(title="Agente Mídia Paga — API", docs_url=None, redoc_url=None)
 app.add_middleware(
@@ -97,7 +100,7 @@ def _load(force: bool = False):
 
 def _load_analise_ia(force: bool = False):
     """Análise rica por IA (parte lenta) — carregada à parte, com cache próprio."""
-    if not force and _cache_ia["analysis"] and (time.time() - _cache_ia["ts"] < CACHE_TTL):
+    if not force and _cache_ia["analysis"] and (time.time() - _cache_ia["ts"] < ANALYSIS_TTL):
         return _cache_ia["analysis"]
     raw, _ = _load()
     start, end = _period()
