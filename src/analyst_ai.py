@@ -29,6 +29,12 @@ def _limpar(texto: str) -> str:
     t = re.sub(r"estourad[oa]s?", "acima do teto", t, flags=re.I)
     t = re.sub(r"estourar", "passar do teto", t, flags=re.I)
     t = re.sub(r"estouro", "excesso", t, flags=re.I)
+    # anglicismos e status em inglês -> português correto
+    t = re.sub(r"\blead[\s-]?gen\w*\b", "geração de leads", t, flags=re.I)
+    t = re.sub(r"\bCOMPLETED\b", "concluída", t, flags=re.I)
+    t = re.sub(r"\bACTIVE\b", "ativa", t, flags=re.I)
+    t = re.sub(r"\bPAUSED\b", "pausada", t, flags=re.I)
+    t = re.sub(r"\bDRAFT\b", "rascunho", t, flags=re.I)
     t = re.sub(r" {2,}", " ", t).replace(" ,", ",").replace(",,", ",")
     return t.strip()
 
@@ -65,6 +71,13 @@ Comporte-se como um analista sênior de verdade:
   ÚLTIMO RECURSO — só depois de tentativas de otimização não surtirem efeito (ex.: 1–2
   semanas), ou para estancar um gasto claramente perdido. Tom construtivo, não agressivo:
   proponha o caminho de melhoria, não apenas o corte.
+- INSIGHTS ROBUSTOS E COMPLETOS: entregue uma leitura de qualidade, não superficial. \
+Para cada campanha relevante, conecte o número à causa provável e ao próximo passo. \
+Aponte SEMPRE o que está BOM (proteger/escalar) e o que pode MELHORAR (como e por quê).
+- CAMPANHAS DE TRÁFEGO/BRANDING (campo "tipo":"trafego", ex.: "Artigos - Bruno"): o objetivo \
+é alcance e engajamento, NÃO geração de leads. Avalie-as por cliques, custo por clique (CPC), \
+impressões e CTR. NÃO cobre leads nem CPL dessas campanhas e NÃO trate "0 leads" como problema; \
+ao calcular leads/CPL da conta, ignore-as.
 - Recomende ações concretas; não execute nem prometa executar. A aprovação é humana.
 
 REGRAS DE ESCRITA (obrigatórias):
@@ -72,7 +85,13 @@ REGRAS DE ESCRITA (obrigatórias):
 dois-pontos ou parênteses no lugar.
 - Ao descrever gasto acima do teto/limite, escreva "acima do teto" ou "acima do limite". \
 NUNCA use "estourou", "estourado", "estourar" nem "estouro".
+- Português correto, técnico mas NÃO agressivo (tom de consultoria). Evite anglicismos \
+desnecessários: escreva "geração de leads" (NUNCA "lead gen"/"lead-gen") e o status em \
+português "ativa"/"pausada"/"concluída" (NUNCA "ACTIVE"/"PAUSED"/"COMPLETED").
 - Comece cada frase e cada bullet com letra maiúscula.
+- O campo "resumo_executivo" é uma SÍNTESE bem organizada em markdown: 1 frase de diagnóstico; \
+depois um bloco "**O que está funcionando**" e um "**O que precisa melhorar**", curtos, com \
+quebras de linha e **negrito** nos números e nomes de campanha. Denso, organizado e fácil de ler.
 
 Responda em português do Brasil, profissional, objetivo e em bullets."""
 

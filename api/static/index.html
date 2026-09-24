@@ -92,6 +92,10 @@
   .analysis.hero #resumo{margin:2px 0 14px}
   .analysis.hero .act{padding:12px 0;font-size:14px;gap:12px}
   .analysis.hero .act .n{width:22px;height:22px;font-size:12px}
+  .analysis.hero .chead{padding:15px 20px} .analysis.hero .chead .ct{font-size:15px}
+  .fullbtn{margin-top:16px;display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:13px;font-weight:700;
+    border:1px dashed color-mix(in srgb,var(--accent) 45%,var(--border));background:transparent;color:var(--accent);
+    border-radius:10px;padding:9px 14px;cursor:not-allowed;opacity:.8}
   .act .ac{flex:1;min-width:0}
   .act .gi{margin-top:8px;display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;font-weight:700;
     cursor:pointer;border:1px solid color-mix(in srgb,var(--accent) 32%,var(--border));background:var(--accent-weak);
@@ -177,9 +181,11 @@
     <div class="updated" id="updated"></div>
     <div id="alert"></div>
     <section class="grid kpis" id="kpis"></section>
-    <section class="card analysis hero">
-      <h2>Análise &amp; recomendações do agente <span id="anaLoad" class="anaload" hidden>· aprofundando com IA…</span></h2>
-      <div class="body"><div id="resumo"></div><div id="acoes"></div></div>
+    <section class="card analysis hero collapsible" data-key="analise">
+      <button class="chead" type="button"><span class="ct">Análise &amp; recomendações do agente <span id="anaLoad" class="anaload" hidden>· aprofundando com IA…</span></span><span class="chev">▾</span></button>
+      <div class="body"><div id="resumo"></div><div id="acoes"></div>
+        <button id="fullReport" class="fullbtn" type="button" disabled title="Em breve: relatório completo em PDF">📑 Gerar análise completa (em breve)</button>
+      </div>
     </section>
     <section class="grid charts">
       <div class="card chart-wide collapsible" data-key="pace"><button class="chead" type="button"><span class="ct">Gasto x teto ao longo do mês</span><span class="chev">▾</span></button><div class="body" id="chartPace"></div></div>
