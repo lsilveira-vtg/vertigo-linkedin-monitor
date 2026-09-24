@@ -43,6 +43,9 @@
   .vchip-lg{padding:16px 22px;border-radius:16px;margin:0 auto 18px}.vchip-lg .vlogo{height:44px}
   .who{font-size:12.5px;color:var(--muted)} .btn{background:var(--surface-2);border:1px solid var(--border);
     border-radius:9px;padding:7px 11px;font:inherit;font-size:13px;cursor:pointer;color:var(--text)}
+  a.btn.sheet{text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:600;
+    color:var(--accent);background:var(--accent-weak);border-color:color-mix(in srgb,var(--accent) 30%,var(--border))}
+  a.btn.sheet:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
   main{padding:20px 0 44px} .grid{display:grid;gap:16px}
   .updated{font-size:12px;color:var(--faint);margin-bottom:14px}
   .alert{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:13px;
@@ -105,7 +108,7 @@
   .card h2{font-size:14px;font-weight:700;margin:0;padding:14px 16px 0}
   .card .body{padding:14px 16px 16px}
   .bar-row{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:12.5px}
-  .bar-row .nm{width:130px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-row .nm{width:170px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .bar-track{flex:1;height:22px;background:var(--surface-2);border-radius:6px;overflow:hidden}
   .bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--navy))}
   .bar-row .vl{width:78px;text-align:right;flex:none;font-variant-numeric:tabular-nums;font-weight:600}
@@ -165,6 +168,7 @@
       <div><b>Mídia Paga · LinkedIn</b><span>Agente de monitoramento de mídia paga</span></div>
     </div>
     <span class="who" id="who"></span>
+    <a class="btn sheet" id="sheetBtn" href="#" target="_blank" rel="noopener" hidden>📄 Consultar planilha</a>
     <button class="btn" id="refresh">Atualizar</button>
     <button class="btn" id="signout">Sair</button>
   </div></header>
@@ -211,6 +215,7 @@
 const $=s=>document.querySelector(s);
 let TOKEN=null, DATA=null, filter="all";
 let DOMAIN="vertigo.com.br";
+let SHEET_URL="";
 function jwtPayload(t){
   let b=t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
   b+="===".slice((b.length+3)%4);
@@ -232,10 +237,16 @@ async function api(path, opts={}){
 }
 
 /* ---- login ---- */
+async function loadConfig(){        // /api/config é público; traz dominio + link da planilha
+  let c;
+  try{c=await (await fetch("/api/config")).json();}catch(e){return null;}
+  if(c.domain)DOMAIN=c.domain;
+  if(c.sheet_url){SHEET_URL=c.sheet_url;const a=$("#sheetBtn");if(a){a.href=SHEET_URL;a.hidden=false;}}
+  return c;
+}
 async function boot(){
-  let cfg;
-  try{cfg=await (await fetch("/api/config")).json();}catch(e){$("#login-msg").textContent="API indisponível.";return;}
-  if(cfg.domain){DOMAIN=cfg.domain;}
+  const cfg=await loadConfig();
+  if(!cfg){$("#login-msg").textContent="API indisponível.";return;}
   if(!cfg.google_client_id){$("#login-msg").textContent="Login Google ainda não configurado (falta GOOGLE_OAUTH_CLIENT_ID).";return;}
   const start=()=>{
     google.accounts.id.initialize({client_id:cfg.google_client_id,callback:onCred});
@@ -292,10 +303,10 @@ function render(){
   ];
   $("#kpis").innerHTML=kpis.map(([l,v,s,c])=>`<div class="kpi ${c?'crit':''}"><div class="lab">${l}</div><div class="val num">${v}</div><div class="sub">${s}</div></div>`).join("");
   const mx=Math.max(...DATA.campaigns.map(c=>c.investimento),1);
-  $("#bars").innerHTML=DATA.campaigns.map(c=>`<div class="bar-row"><span class="nm" title="${c.nome}">${c.nome.split(" - ")[0]}</span><div class="bar-track"><div class="bar-fill" style="width:${(c.investimento/mx*100).toFixed(1)}%"></div></div><span class="vl">${BRL0(c.investimento)}</span></div>`).join("");
+  $("#bars").innerHTML=DATA.campaigns.map(c=>`<div class="bar-row"><span class="nm" title="${c.nome}">${c.nome}</span><div class="bar-track"><div class="bar-fill" style="width:${(c.investimento/mx*100).toFixed(1)}%"></div></div><span class="vl">${BRL0(c.investimento)}</span></div>`).join("");
   const _tot=DATA.campaigns.reduce((s,c)=>s+(c.investimento||0),0);
   const _top2=[...DATA.campaigns].sort((a,b)=>b.investimento-a.investimento).slice(0,2).reduce((s,c)=>s+(c.investimento||0),0);
-  $("#barsFoot").innerHTML=_tot?`<span>Total: <b>${BRL0(_tot)}</b> em <b>${DATA.campaigns.length}</b> campanhas</span><span>Top 2 = <b>${Math.round(_top2/_tot*100)}%</b> do gasto</span>`:"";
+  $("#barsFoot").innerHTML=_tot?`<span>Total: <b>${BRL0(_tot)}</b> em <b>${DATA.campaigns.length}</b> campanhas</span><span>As <b>2 maiores</b> campanhas concentram <b>${Math.round(_top2/_tot*100)}%</b> do gasto</span>`:"";
   renderAnalysis(DATA.analysis||{});
   charts();
   rows();
@@ -455,7 +466,7 @@ $("#signout").addEventListener("click",()=>signout());
 setupCollapsibles();
 
 /* auto-login se já tinha token válido (o ID token do Google expira ~1h) */
-(function(){try{const t=localStorage.getItem("vtg_tok");if(t){const p=jwtPayload(t);if(p.exp*1000>Date.now()+60000){TOKEN=t;enter();return;}}}catch(e){}boot();})();
+(function(){try{const t=localStorage.getItem("vtg_tok");if(t){const p=jwtPayload(t);if(p.exp*1000>Date.now()+60000){TOKEN=t;loadConfig();enter();return;}}}catch(e){}boot();})();
 </script>
 </body>
 </html>

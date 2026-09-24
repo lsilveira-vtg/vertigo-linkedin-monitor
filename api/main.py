@@ -120,7 +120,12 @@ def health():
 @app.get("/api/config")
 def config_public():
     """Config pública para o frontend (o client_id do Google não é segredo)."""
-    return {"google_client_id": os.getenv("GOOGLE_OAUTH_CLIENT_ID", ""), "domain": ALLOWED_DOMAIN}
+    sid = os.getenv("GOOGLE_SHEET_ID", "")
+    return {
+        "google_client_id": os.getenv("GOOGLE_OAUTH_CLIENT_ID", ""),
+        "domain": ALLOWED_DOMAIN,
+        "sheet_url": f"https://docs.google.com/spreadsheets/d/{sid}/edit" if sid else "",
+    }
 
 
 @app.get("/api/dashboard")
