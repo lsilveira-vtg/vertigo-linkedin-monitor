@@ -112,7 +112,9 @@ def _load_analise_ia(force: bool = False):
 # ---------- rotas ----------
 @app.get("/")
 def index():
-    return FileResponse(STATIC / "index.html")
+    # no-cache: o navegador sempre revalida o HTML (via ETag), então toda
+    # atualização do painel aparece na hora, sem precisar limpar o cache.
+    return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/api/health")
