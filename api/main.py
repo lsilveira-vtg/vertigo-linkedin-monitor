@@ -134,6 +134,13 @@ def index():
     return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-cache"})
 
 
+@app.get("/report")
+def report_page():
+    """Relatório completo (imprimível/PDF). A própria página busca os dados com
+    o login do usuário (mesma origem); protege via /api/* que exige token."""
+    return FileResponse(STATIC / "report.html", headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}

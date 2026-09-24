@@ -105,8 +105,12 @@
   .analysis.hero .act .n{width:22px;height:22px;font-size:12px}
   .analysis.hero .chead{padding:15px 20px} .analysis.hero .chead .ct{font-size:15px}
   .fullbtn{margin-top:16px;display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:13px;font-weight:700;
-    border:1px dashed color-mix(in srgb,var(--accent) 45%,var(--border));background:transparent;color:var(--accent);
-    border-radius:10px;padding:9px 14px;cursor:not-allowed;opacity:.8}
+    border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));background:var(--accent-weak);color:var(--accent);
+    border-radius:10px;padding:9px 14px;cursor:pointer;transition:background .15s,color .15s}
+  .fullbtn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .ana-skel{color:var(--muted);font-size:14px;padding:10px 0}
+  .ana-skel::after{content:"";display:inline-block;width:1em;text-align:left;animation:dots 1.2s steps(4,end) infinite}
+  @keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
   .act .ac{flex:1;min-width:0}
   .act .gi{margin-top:8px;display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;font-weight:700;
     cursor:pointer;border:1px solid color-mix(in srgb,var(--accent) 32%,var(--border));background:var(--accent-weak);
@@ -215,7 +219,7 @@
     <section class="card analysis hero collapsible" data-key="analise">
       <button class="chead" type="button"><span class="ct">Análise &amp; recomendações do agente <span id="anaLoad" class="anaload" hidden>· aprofundando com IA…</span><span id="anaStamp" class="anaload" hidden></span></span><span class="chev">▾</span></button>
       <div class="body"><div id="resumo"></div><div id="acoes"></div>
-        <button id="fullReport" class="fullbtn" type="button" disabled title="Em breve: relatório completo em PDF">📑 Gerar análise completa (em breve)</button>
+        <button id="fullReport" class="fullbtn" type="button" title="Abre o relatório completo para salvar como PDF">📑 Gerar relatório completo (PDF)</button>
       </div>
     </section>
     <section class="grid charts">
@@ -283,10 +287,10 @@
           <li>Em qualquer ação, clique <b>“✨ Gerar insights”</b> para o agente aprofundar no chat.</li>
           <li>Use o <b>chat</b> “Pergunte ao agente” para perguntas livres (ex.: “qual campanha cortar primeiro?”).</li>
           <li>O <b>Histórico</b> (lateral do chat) guarda as <b>últimas 20 consultas</b> do time (com rolagem), para todos consultarem. Cada uma pode ser <b>deletada</b> no menu “⋯”.</li>
-          <li><b>Recolha os gráficos</b> que não quiser ver (botão de minimizar) — a preferência fica salva.</li>
+          <li><b>Recolha os gráficos</b> que não quiser ver (botão de minimizar). A preferência fica salva.</li>
           <li>Abra a <b>planilha</b> completa pelo botão no topo.</li>
         </ol>
-        <p class="modal-note">Os <b>números</b> atualizam a cada ~10 minutos. A <b>análise</b> fica estável por algumas horas, então todo mundo que entra vê a mesma leitura. Acesso restrito a contas <b>@vertigo.com.br</b>.</p>
+        <p class="modal-note">Os <b>números</b> atualizam a cada ~10 minutos. A <b>análise</b> é gerada 1x por dia e fica estável o dia todo, então todo mundo que entra vê a mesma leitura. O <b>relatório em PDF</b> segue essa mesma lógica (o "relatório do dia"). Acesso restrito a contas <b>@vertigo.com.br</b>.</p>
       </div>
     </div>
   </div>
@@ -390,7 +394,10 @@ function render(){
   const _tot=DATA.campaigns.reduce((s,c)=>s+(c.investimento||0),0);
   const _top2=[...DATA.campaigns].sort((a,b)=>b.investimento-a.investimento).slice(0,2).reduce((s,c)=>s+(c.investimento||0),0);
   $("#barsFoot").innerHTML=_tot?`<span>Total: <b>${BRL0(_tot)}</b> em <b>${DATA.campaigns.length}</b> campanhas</span><span>As <b>2 maiores</b> campanhas concentram <b>${Math.round(_top2/_tot*100)}%</b> do gasto</span>`:"";
-  renderAnalysis(DATA.analysis||{});
+  // não pintamos a análise por regras (evita o "flash" do texto fraco);
+  // o card espera a análise do dia (IA), que já vem quase instantânea do cache.
+  $("#resumo").innerHTML='<div class="ana-skel">Preparando a análise do dia…</div>';
+  $("#acoes").innerHTML="";
   charts();
   rows();
 }
@@ -438,9 +445,9 @@ async function loadAnalise(){
     if(ia&&(ia.resumo||(ia.acoes&&ia.acoes.length))){
       renderAnalysis(ia);
       if(ia.gerada_em){$("#anaStamp").textContent=" · análise do dia, gerada às "+ia.gerada_em;$("#anaStamp").hidden=false;}
-    }
+    } else { renderAnalysis(DATA.analysis||{}); }   // fallback raro
   }
-  catch(e){/* mantém a análise por regras se a IA falhar/demorar */}
+  catch(e){ renderAnalysis(DATA.analysis||{}); }    // se a IA falhar de vez, mostra a de regras
   finally{$("#anaLoad").hidden=true;}
 }
 // cards de gráfico recolhíveis (lembra a preferência de cada pessoa no navegador)
@@ -585,6 +592,7 @@ $("#histList").addEventListener("click",e=>{
   const open=e.target.closest(".hist-open");if(open)showFromHistory(+open.dataset.i);
 });
 document.addEventListener("click",e=>{if(!e.target.closest(".hist-dots")&&!e.target.closest(".hist-menu"))closeHistMenus();});
+$("#fullReport").addEventListener("click",()=>window.open("/report","_blank","noopener"));
 $("#helpBtn").addEventListener("click",()=>$("#help").hidden=false);
 $("#helpClose").addEventListener("click",()=>$("#help").hidden=true);
 $("#help").addEventListener("click",e=>{if(e.target===$("#help"))$("#help").hidden=true;});
