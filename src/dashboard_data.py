@@ -7,7 +7,7 @@ import calendar
 from datetime import date, datetime, timedelta, timezone
 
 from . import analyst, budget
-from .report_builder import collect_campaign_data
+from .report_builder import collect_campaign_data, RATEIO_FATOR
 
 BRT = timezone(timedelta(hours=-3))
 
@@ -27,12 +27,19 @@ def _num(v) -> float:
         return 0.0
 
 
-def _serie_diaria(start: date, end: date) -> list[dict]:
+def _serie_diaria(start: date, end: date,
+                  rateio_nomes: set[str] | None = None) -> list[dict]:
     """Gasto acumulado por dia do mês, lido da aba 'Campanhas' da planilha.
 
     Retorna [{'dia': 1, 'acumulado': 123.45}, ...] do dia 1 até `end`. Se a
     planilha não estiver acessível, devolve [] (o gráfico simplesmente some).
+
+    `rateio_nomes`: nomes dos grupos que entram rateados (Liferay 50/50). A aba
+    'Campanhas' guarda o gasto BRUTO por dia; aplicamos o mesmo fator dos KPIs
+    nesses grupos para o acumulado do gráfico bater com o cartão de Investimento
+    (senão a linha "estoura" o teto sem ter estourado de verdade).
     """
+    rateio_nomes = rateio_nomes or set()
     try:
         from .sheets_client import open_sheet
         linhas = open_sheet().worksheet("Campanhas").get_all_values()[1:]
@@ -48,6 +55,9 @@ def _serie_diaria(start: date, end: date) -> list[dict]:
         if not (start <= d <= end):
             continue
         inv = _num(r[2]) if len(r) > 2 else 0.0
+        nome = (r[1] or "").strip() if len(r) > 1 else ""
+        if nome in rateio_nomes:
+            inv *= RATEIO_FATOR                      # mesmo rateio dos KPIs
         por_dia[d] = por_dia.get(d, 0.0) + inv
     serie, acc, d = [], 0.0, start
     while d <= end:
@@ -130,7 +140,9 @@ def build_dashboard_data(start: date, end: date, ref_date: date | None = None,
             "dias_no_mes": calendar.monthrange(ref_date.year, ref_date.month)[1],
             "dia_atual": ref_date.day,
         },
-        "serie_diaria": _serie_diaria(start.replace(day=1), ref_date),
+        "serie_diaria": _serie_diaria(
+            start.replace(day=1), ref_date,
+            {c["nome"] for c in data if c.get("rateio_5050")}),
         "campaigns": campaigns,
         "analysis": {
             "resumo": analysis.resumo_executivo,
