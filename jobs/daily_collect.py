@@ -12,9 +12,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src import linkedin_client, sheets_client
+from src.report_builder import RATEIO_CAMPANHAS, RATEIO_FATOR
 
+# "Invest rateado (R$)" no FIM (não desloca colunas existentes): é o gasto com o
+# rateio 50/50 da Liferay aplicado, para o Looker/planilha baterem com o dashboard.
 CAMP_HEADER = ["Data", "Campanha", "Invest (R$)", "Leads", "CPL (R$)",
-               "Impressões", "Cliques", "Reações", "Comentários", "Compartilhamentos"]
+               "Impressões", "Cliques", "Reações", "Comentários", "Compartilhamentos",
+               "Invest rateado (R$)"]
 ADS_HEADER = ["Data", "Anúncio (ID)", "Campanha", "Link", "Invest (R$)", "Impressões",
               "Cliques", "Reações", "Comentários", "Compartilhamentos"]
 
@@ -57,6 +61,22 @@ def main() -> None:
         def _name(urn: str) -> str:
             return names.get(urn.rsplit(":", 1)[-1], urn)
 
+        # Fator de rateio por grupo de anúncios (0.5 nos grupos da campanha Liferay),
+        # para gravar a coluna "Invest rateado". Se a API falhar, cai para bruto (1.0).
+        try:
+            cg_nomes = {str(g["id"]): (g.get("name") or "").lower()
+                        for g in linkedin_client.get_campaign_groups()}
+        except Exception as exc:
+            print(f"  aviso: não carreguei os grupos de campanha (rateio): {exc}")
+            cg_nomes = {}
+
+        def _fator(c: dict) -> float:
+            gid = str(c.get("campaignGroup") or "").rsplit(":", 1)[-1]
+            nome = cg_nomes.get(gid, "")
+            return RATEIO_FATOR if any(t in nome for t in RATEIO_CAMPANHAS) else 1.0
+
+        fator_by_id = {str(c["id"]): _fator(c) for c in campaigns}
+
         analytics = linkedin_client.get_analytics(start, yesterday, pivot="CAMPAIGN")
         ad_analytics = linkedin_client.get_analytics(start, yesterday, pivot="CREATIVE")
 
@@ -64,11 +84,14 @@ def main() -> None:
         for row in analytics:
             invest = float(row.get("costInLocalCurrency", 0) or 0)
             leads = int(row.get("oneClickLeads", 0) or 0)
+            adid = row.get("pivotValues", [""])[0].rsplit(":", 1)[-1]
+            fator = fator_by_id.get(adid, 1.0)
             campaign_rows.append([
                 _row_date(row), _name(row.get("pivotValues", [""])[0]),
                 invest, leads, round(invest / leads, 2) if leads else "",
                 row.get("impressions", 0), row.get("clicks", 0),
                 row.get("likes", 0), row.get("comments", 0), row.get("shares", 0),
+                round(invest * fator, 2),   # Invest rateado (50/50 na Liferay)
             ])
 
         creative_cache: dict[str, tuple[str, str]] = {}
