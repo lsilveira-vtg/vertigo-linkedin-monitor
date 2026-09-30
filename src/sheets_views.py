@@ -9,6 +9,7 @@
 Toda a formatação é aplicada por código (batch_update) a cada reconstrução, então
 a planilha nunca "desformata" — mesmo com a coleta diária reescrevendo os dados.
 """
+import calendar
 import re
 from datetime import date
 
@@ -16,6 +17,14 @@ from . import analyst, budget, sheets_client
 from .report_builder import collect_campaign_data
 
 RESUMO_TAB = "📊 Resumo"
+MESES_ABREV = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+               "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+
+
+def _month_tab_name(month_key: str) -> str:
+    """'2026-08' -> 'Resumo Ago/2026' (nome da aba de fechamento do mês)."""
+    y, m = int(month_key[:4]), int(month_key[5:7])
+    return f"Resumo {MESES_ABREV[m - 1]}/{y}"
 
 SAUDE_LABEL = {"boa": "🟢 Boa", "atencao": "🟡 Atenção", "critica": "🔴 Requer ação"}
 STATUS_LABEL = {"ACTIVE": "Ativa", "PAUSED": "Pausada", "DRAFT": "Rascunho",
@@ -99,13 +108,15 @@ def _border(sid, r0, r1, c0, c1):
         "innerHorizontal": line, "innerVertical": line}}
 
 
-def rebuild_summary(period_label, campaign_data, analysis, ref_date=None):
-    """Reescreve a aba 📊 Resumo, formatada, do zero."""
+def rebuild_summary(period_label, campaign_data, analysis, ref_date=None,
+                    tab_name=RESUMO_TAB, fechado=False):
+    """Reescreve uma aba de Resumo, formatada, do zero. `tab_name` permite gerar
+    abas de fechamento por mês (ex.: 'Resumo Ago/2026'); `fechado` ajusta o texto."""
     sheet = sheets_client.open_sheet()
     try:
-        ws = sheet.worksheet(RESUMO_TAB)
+        ws = sheet.worksheet(tab_name)
     except Exception:
-        ws = sheet.add_worksheet(title=RESUMO_TAB, rows=200, cols=NCOLS)
+        ws = sheet.add_worksheet(title=tab_name, rows=200, cols=NCOLS)
     sid = ws.id
 
     data = sorted(campaign_data, key=lambda x: x.get("investimento_brl", 0) or 0, reverse=True)
@@ -123,9 +134,14 @@ def rebuild_summary(period_label, campaign_data, analysis, ref_date=None):
     # ---- monta as linhas ----
     rows = []
     rows.append([f"Vertigo · LinkedIn Ads — {period_label}"] + [""] * (NCOLS - 1))
-    rows.append(["Resumo consolidado · atualizado em "
-                 f"{date.today().strftime('%d/%m/%Y')} · leads = formulários do LinkedIn "
-                 "(MQLs vêm do CRM e podem diferir)"] + [""] * (NCOLS - 1))
+    if fechado:
+        sub = ("Fechamento do mês · dados consolidados · leads = formulários do "
+               "LinkedIn (MQLs vêm do CRM e podem diferir)")
+    else:
+        sub = ("Resumo consolidado · atualizado em "
+               f"{date.today().strftime('%d/%m/%Y')} · leads = formulários do LinkedIn "
+               "(MQLs vêm do CRM e podem diferir)")
+    rows.append([sub] + [""] * (NCOLS - 1))
     rows.append([""] * NCOLS)
     rows.append(["INVESTIMENTO TOTAL", "", "", "LEADS", "", "", "CPL GERAL", "", "",
                  "CONSUMO DO TETO", "", ""])
@@ -383,9 +399,63 @@ def rebuild_per_campaign():
         sheet.batch_update({"requests": reqs})
 
 
+def rebuild_month(month_key: str) -> bool:
+    """Gera/atualiza a aba de fechamento de um mês ('Resumo Ago/2026'), congelada
+    (retrospectiva). Retorna True se criou a aba; False se o mês não tem dados."""
+    y, m = int(month_key[:4]), int(month_key[5:7])
+    start = date(y, m, 1)
+    end = date(y, m, calendar.monthrange(y, m)[1])
+    data = collect_campaign_data(start, end)
+    if not data:
+        return False
+    period_label = f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
+    analysis = analyst.run_analysis(period_label, data, ref_date=end, fechado=True)
+    rebuild_summary(period_label, data, analysis, ref_date=end,
+                    tab_name=_month_tab_name(month_key), fechado=True)
+    return True
+
+
+def _meses_com_dados() -> list[str]:
+    """Meses (AAAA-MM) presentes na aba 'Campanhas', até o último mês FECHADO
+    (exclui o mês corrente, que vive na aba '📊 Resumo' ao vivo)."""
+    try:
+        col = sheets_client.open_sheet().worksheet("Campanhas").col_values(1)[1:]
+    except Exception:
+        return []
+    cur = date.today().strftime("%Y-%m")
+    meses = set()
+    for v in col:
+        try:
+            meses.add(date.fromisoformat(str(v).strip()).strftime("%Y-%m"))
+        except (ValueError, AttributeError):
+            continue
+    return sorted(m for m in meses if m < cur)
+
+
+def ensure_past_month_tabs() -> None:
+    """Cria as abas de fechamento dos meses passados que ainda não existem.
+    Idempotente: no regime normal (todas já existem) não faz nada. Roda na coleta
+    diária, então o mês recém-fechado ganha sua aba automaticamente."""
+    sheet = sheets_client.open_sheet()
+    existentes = {ws.title for ws in sheet.worksheets()}
+    for mk in _meses_com_dados():
+        if _month_tab_name(mk) in existentes:
+            continue
+        try:
+            if rebuild_month(mk):
+                print(f"Aba de fechamento criada: {_month_tab_name(mk)}")
+        except Exception as exc:
+            print(f"  aviso: não gerei a aba {_month_tab_name(mk)}: {exc}")
+
+
 def rebuild_all(period_label, start, end):
     """Reconstrói as visualizações organizadas após uma coleta."""
     data = collect_campaign_data(start, end)
     analysis = analyst.run_analysis(period_label, data, ref_date=end)
     rebuild_summary(period_label, data, analysis, ref_date=end)
     rebuild_per_campaign()
+    # Garante as abas de fechamento dos meses passados (cria as que faltam).
+    try:
+        ensure_past_month_tabs()
+    except Exception as exc:
+        print(f"  aviso: não atualizei as abas mensais: {exc}")
