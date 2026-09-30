@@ -152,8 +152,8 @@ def rebuild_summary(period_label, campaign_data, analysis, ref_date=None):
             c.get("impressoes", 0) or 0,
             c.get("cliques", 0) or 0,
             (c["ctr"] if c.get("ctr") is not None else ""),
-            v.diagnostico if v else "",
-            v.recomendacao if v else "",
+            analyst._strip_md(v.diagnostico) if v else "",
+            analyst._strip_md(v.recomendacao) if v else "",
         ])
     data_end = len(rows)
 
@@ -183,7 +183,7 @@ def rebuild_summary(period_label, campaign_data, analysis, ref_date=None):
     analysis_hdr = len(rows)
     rows.append(["ANÁLISE DO AGENTE"] + [""] * (NCOLS - 1))
     analysis_txt = len(rows)
-    rows.append([analysis.resumo_executivo] + [""] * (NCOLS - 1))
+    rows.append([analyst._strip_md(analysis.resumo_executivo)] + [""] * (NCOLS - 1))
 
     # ---- escreve valores ----
     ws.clear()

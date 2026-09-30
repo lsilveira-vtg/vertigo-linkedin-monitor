@@ -22,6 +22,7 @@ def _strip_md(t: str) -> str:
     if not t:
         return t
     t = re.sub(r"\*\*(.+?)\*\*", r"\1", t)                       # **negrito**
+    t = t.replace("**", "")                                      # ** solto (sem par)
     t = re.sub(r"(?<!\*)\*(?!\s)([^*]+?)\*(?!\*)", r"\1", t)     # *itálico*
     t = re.sub(r"^\s*#{1,6}\s*", "", t, flags=re.M)             # ## título
     return _sem_travessao(t.replace("`", ""))
