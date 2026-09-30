@@ -215,7 +215,8 @@ def ask(p: Pergunta, user: str = Depends(current_user)):
         raise HTTPException(422, "Pergunta vazia.")
     cid = (p.conversation_id or "").strip() or uuid.uuid4().hex[:12]
     raw, dash = _load(p.month)
-    resposta = analyst_ai.answer_question(q, raw, dash.get("budget"), history=p.history)
+    resposta = analyst_ai.answer_question(q, raw, dash.get("budget"),
+                                          history=p.history, periodo=dash.get("period"))
     try:
         chat_history.add(cid, q, resposta, user.split("@")[0],
                          datetime.now(BRT).strftime("%d/%m %H:%M"))
