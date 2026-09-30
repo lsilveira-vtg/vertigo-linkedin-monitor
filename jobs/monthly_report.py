@@ -3,6 +3,7 @@
 Congela o relatorio de FECHAMENTO robusto (7 secoes) e usa esse MESMO documento
 no e-mail, garantindo que o e-mail e o PDF do painel sejam identicos (single source
 of truth). O relatorio completo fica disponivel em /report?month=AAAA-MM."""
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -24,7 +25,9 @@ def is_first_business_day(d: date) -> bool:
 
 def main() -> None:
     today = date.today()
-    if not is_first_business_day(today):
+    # FORCE_MONTHLY=1 permite rodar o fechamento manualmente (teste), fora do 1o dia útil.
+    forcar = os.getenv("FORCE_MONTHLY", "").strip().lower() not in ("", "0", "false", "nao", "não")
+    if not forcar and not is_first_business_day(today):
         print(f"{today} não é o primeiro dia útil do mês — nada a fazer.")
         return
 
