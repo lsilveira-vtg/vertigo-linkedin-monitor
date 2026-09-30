@@ -84,22 +84,33 @@ def _request(method: str, url: str, *, extra_headers: dict | None = None, **kwar
     return resp
 
 
-def get_campaigns() -> list[dict]:
-    """Lista todas as campanhas da conta (com paginacao)."""
-    url = f"{BASE_URL}/adAccounts/{config.LINKEDIN_ACCOUNT_ID}/adCampaigns"
-    campaigns: list[dict] = []
+def _paged(url: str, params: dict) -> list[dict]:
+    """GET paginado padrao da Marketing API (elements + nextPageToken)."""
+    out: list[dict] = []
     page_token = None
     while True:
-        params = {"q": "search", "pageSize": 1000}
+        p = dict(params)
         if page_token:
-            params["pageToken"] = page_token
-        resp = _request("GET", url, params=params)
-        data = resp.json()
-        campaigns.extend(data.get("elements", []))
+            p["pageToken"] = page_token
+        data = _request("GET", url, params=p).json()
+        out.extend(data.get("elements", []))
         page_token = data.get("metadata", {}).get("nextPageToken")
         if not page_token:
             break
-    return campaigns
+    return out
+
+
+def get_campaigns() -> list[dict]:
+    """Lista todos os grupos de anuncios (a API chama de 'campaigns')."""
+    url = f"{BASE_URL}/adAccounts/{config.LINKEDIN_ACCOUNT_ID}/adCampaigns"
+    return _paged(url, {"q": "search", "pageSize": 1000})
+
+
+def get_campaign_groups() -> list[dict]:
+    """Lista as CAMPANHAS (campaign groups, o ambito maior). Usado para o rateio
+    (ex.: identificar a campanha 'Liferay' e aplicar 50/50 aos grupos dela)."""
+    url = f"{BASE_URL}/adAccounts/{config.LINKEDIN_ACCOUNT_ID}/adCampaignGroups"
+    return _paged(url, {"q": "search", "pageSize": 1000})
 
 
 # Metricas pedidas no relatorio (campos validos da AdAnalytics API).

@@ -30,6 +30,29 @@ CAMPAIGN_CONFIG: dict[str, dict] = {
 # Formato: {"Grupo": limite_em_reais}
 MONTHLY_BUDGETS: dict[str, float] = json.loads(os.getenv("MONTHLY_BUDGETS_JSON", "{}"))
 
+# RATEIO 50/50: campanhas (grupos de campanha) cujo gasto/orcamento deve entrar
+# no painel pela metade (a Vertigo banca so 50%). Match por SUBSTRING no nome da
+# campanha, case-insensitive. Ex.: "Liferay - Junho>Novembro26".
+RATEIO_CAMPANHAS: tuple[str, ...] = ("liferay",)
+RATEIO_FATOR: float = 0.5
+
+
+def _group_names() -> dict[str, str]:
+    """{id_do_grupo_de_campanha: nome}. Se a API falhar, retorna {} (sem rateio)."""
+    try:
+        return {str(g["id"]): (g.get("name") or "") for g in linkedin_client.get_campaign_groups()}
+    except Exception as exc:
+        print(f"  aviso: nao listei os grupos de campanha (rateio 50/50 nao aplicado): {exc}")
+        return {}
+
+
+def _fator_rateio(meta: dict, group_names: dict[str, str]) -> float:
+    """0.5 se o grupo de anuncios pertence a uma campanha de rateio (ex.: Liferay)."""
+    urn = str(meta.get("campaignGroup") or "")
+    gid = urn.rsplit(":", 1)[-1]
+    nome = group_names.get(gid, "").lower()
+    return RATEIO_FATOR if any(t in nome for t in RATEIO_CAMPANHAS) else 1.0
+
 
 def _aggregate(rows: list[dict]) -> dict[str, dict]:
     """Soma metricas diarias por campanha. A chave e o id numerico da campanha
@@ -48,19 +71,21 @@ def _aggregate(rows: list[dict]) -> dict[str, dict]:
 def build_report_for_period(start: date, end: date) -> str:
     analytics = _aggregate(linkedin_client.get_analytics(start, end, pivot="CAMPAIGN"))
     campaigns_meta = {str(c["id"]): c for c in linkedin_client.get_campaigns()}
+    group_names = _group_names()
 
     reports: list[CampaignReport] = []
     for campaign_id, metrics in analytics.items():
         cfg = CAMPAIGN_CONFIG.get(str(campaign_id), {})
         meta = campaigns_meta.get(campaign_id, {})
         ctype = cfg.get("type", "leads")
+        fator = _fator_rateio(meta, group_names)
 
         rep = CampaignReport(
             emoji=cfg.get("emoji", "📊"),
             name=cfg.get("display", meta.get("name", str(campaign_id))),
             note=cfg.get("note", ""),
             kind=ctype,
-            invest=metrics.get("costInLocalCurrency", 0),
+            invest=metrics.get("costInLocalCurrency", 0) * fator,
         )
         if ctype == "trafego":
             rep.clicks = int(metrics.get("clicks", 0))
@@ -89,10 +114,12 @@ def build_report_for_period(start: date, end: date) -> str:
         budgets["Conta (total)"] = (total_gasto, teto)
     for campaign_id, metrics in analytics.items():
         cfg = CAMPAIGN_CONFIG.get(str(campaign_id), {})
-        nome = cfg.get("display", campaigns_meta.get(campaign_id, {}).get("name", str(campaign_id)))
+        meta = campaigns_meta.get(campaign_id, {})
+        nome = cfg.get("display", meta.get("name", str(campaign_id)))
         regra = budget.campaign_rule(nome)
         if regra and regra.get("limite_mensal"):
-            budgets[regra["chave"]] = (metrics.get("costInLocalCurrency", 0), float(regra["limite_mensal"]))
+            gasto_real = metrics.get("costInLocalCurrency", 0) * _fator_rateio(meta, group_names)
+            budgets[regra["chave"]] = (gasto_real, float(regra["limite_mensal"]))
 
     period = f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
     return format_report(period, reports, budgets, deltas={})
@@ -102,12 +129,14 @@ def collect_campaign_data(start: date, end: date) -> list[dict]:
     """Dados estruturados por campanha para a análise por IA (não formata texto)."""
     analytics = _aggregate(linkedin_client.get_analytics(start, end, pivot="CAMPAIGN"))
     campaigns_meta = {str(c["id"]): c for c in linkedin_client.get_campaigns()}
+    group_names = _group_names()
 
     out: list[dict] = []
     for campaign_id, m in analytics.items():
         cfg = CAMPAIGN_CONFIG.get(str(campaign_id), {})
         meta = campaigns_meta.get(campaign_id, {})
-        invest = round(m.get("costInLocalCurrency", 0), 2)
+        fator = _fator_rateio(meta, group_names)     # 0.5 nos grupos da Liferay
+        invest = round(m.get("costInLocalCurrency", 0) * fator, 2)
         leads = int(m.get("oneClickLeads", 0))
         impressions = int(m.get("impressions", 0))
         clicks = int(m.get("clicks", 0))
@@ -115,6 +144,7 @@ def collect_campaign_data(start: date, end: date) -> list[dict]:
             "nome": cfg.get("display", meta.get("name", str(campaign_id))),
             "tipo": cfg.get("type", "leads"),
             "status": meta.get("status", ""),
+            "rateio_5050": fator < 1.0,
             "investimento_brl": invest,
             "leads": leads,
             "cpl_brl": round(invest / leads, 2) if leads else None,

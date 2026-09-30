@@ -20,7 +20,27 @@ import json
 import os
 from datetime import date
 
-_RULES: dict = json.loads(os.getenv("BUDGET_RULES_JSON", "{}"))
+# Tetos mensais da conta (valores REAIS da Vertigo, já com o rateio 50/50 da
+# campanha Liferay aplicado ao gasto). Ficam no código (repo interno/privado)
+# como fonte de verdade; BUDGET_RULES_JSON pode acrescentar/estender.
+_DEFAULT_RULES: dict = {
+    "total_mensal": 3400.00,          # padrão atual (usado em meses sem override)
+    "overrides": {
+        "2026-04": 4000.00, "2026-05": 4000.00, "2026-06": 4000.00,
+        "2026-07": 2534.44, "2026-08": 2636.37, "2026-09": 3400.00,
+        "2026-10": 1500.00, "2026-11": 1300.00, "2026-12": 1100.00,
+    },
+    "campanhas": {},
+}
+_ENV_RULES: dict = json.loads(os.getenv("BUDGET_RULES_JSON", "{}"))
+
+# Combina: os meses definidos no código têm prioridade (fonte de verdade); o
+# ENV pode adicionar outros meses e sub-limites.
+_RULES: dict = {
+    "total_mensal": _ENV_RULES.get("total_mensal", _DEFAULT_RULES["total_mensal"]),
+    "overrides": {**_ENV_RULES.get("overrides", {}), **_DEFAULT_RULES["overrides"]},
+    "campanhas": {**_DEFAULT_RULES.get("campanhas", {}), **_ENV_RULES.get("campanhas", {})},
+}
 
 
 def total_cap(year_month: str) -> float | None:
