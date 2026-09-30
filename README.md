@@ -2,6 +2,9 @@
 
 Agente automatizado de monitoramento de mídia paga no LinkedIn da Vertigo. Coleta dados de campanhas, analisa performance, recomenda ações mediante aprovação, e envia reports semanal e mensal por e-mail.
 
+> 📖 **Documentação completa (funcionalidades + lógica de análise e relatórios):** [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
+> Painel ao vivo: `https://midiapaga-api.vtgdev.net` (acesso restrito a `@vertigo.com.br`). O dashboard evoluiu de Looker Studio para um **painel web próprio** (ver a documentação). O log abaixo mantém o histórico das primeiras etapas.
+
 ---
 
 ## Pipeline
