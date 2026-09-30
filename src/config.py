@@ -18,6 +18,9 @@ LINKEDIN_ACCOUNT_ID = os.getenv("LINKEDIN_ACCOUNT_ID", "")
 GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "")
 
+# URL pública do painel/relatório (para links nos e-mails)
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://midiapaga-api.vtgdev.net").rstrip("/")
+
 # E-mail
 GMAIL_SENDER = os.getenv("GMAIL_SENDER", "")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")

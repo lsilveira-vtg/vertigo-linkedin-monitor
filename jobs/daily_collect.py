@@ -111,6 +111,20 @@ def main() -> None:
     except Exception as exc:
         print(f"  aviso: falha ao atualizar visualizações: {exc}")
 
+    # Pré-gera e congela os textos do dia (card do painel + relatório parcial). Assim,
+    # quando a primeira pessoa abrir o painel, a análise já está pronta e idêntica para
+    # todos (single source of truth), sem a "corrida" do primeiro clique.
+    try:
+        from src import reports
+        from src.report_builder import collect_campaign_data
+        m_start = yesterday.replace(day=1)
+        dados = collect_campaign_data(m_start, yesterday)
+        reports.load_or_build_card(data=dados)
+        reports.load_or_build_report(data=dados)
+        print("Textos do dia pré-gerados (card + relatório).")
+    except Exception as exc:
+        print(f"  aviso: não pré-gerei os textos do dia: {exc}")
+
 
 if __name__ == "__main__":
     main()
