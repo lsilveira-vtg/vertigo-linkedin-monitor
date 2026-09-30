@@ -10,18 +10,18 @@ Agente automatizado de monitoramento de mídia paga no LinkedIn da Vertigo. Cole
 ## Pipeline
 
 ```
-LinkedIn Advertising API
+LinkedIn Marketing API
             ↓
-    Coleta de dados (Python, diária)
+    Coleta diária (Python, incremental)
             ↓
-    Google Sheets → Dashboard Looker Studio
+    Google Sheets  →  Painel web (midiapaga-api.vtgdev.net)  +  Looker (legado)
             ↓
-    Análise e recomendações de ações
+    Análise e recomendações do agente (motor de regras + IA)
             ↓
-    Aprovação (e-mail / Discord) → Execução via API
-            ↓
-    Reports semanal e mensal por e-mail
+    Painel web  +  Reports por e-mail (semanal/mensal)  +  Discord
 ```
+
+> O agente é **consultivo**: recomenda ações, mas **não executa** nada no LinkedIn (a decisão é sempre humana).
 
 ---
 
@@ -29,9 +29,9 @@ LinkedIn Advertising API
 
 | Necessidade | Onde |
 |---|---|
-| Ver dados | Dashboard Looker Studio / planilha Google Sheets |
-| Reports | E-mail (semanal toda segunda, mensal no 1º dia útil) |
-| Comandos e aprovações | Canal `Projeto Agente Mídia Paga` no Discord |
+| Ver dados e usar o agente | **Painel web:** https://midiapaga-api.vtgdev.net (login `@vertigo.com.br`) — KPIs, gráficos, chat ao vivo e relatório em PDF. Planilha Google Sheets e Looker como apoio. |
+| Reports | E-mail (acumulado semanal toda segunda; fechamento mensal no 1º dia útil) |
+| Comandos | Bot no Discord (`/report`, `/status`, `/budget`) |
 
 ---
 
@@ -114,6 +114,15 @@ Projeto migrado para o GitLab corporativo (origin) como fonte principal; GitHub 
 - **Regras de orçamento**: teto mensal da conta (R$ 2.636,37), override por mês (Jul/2026 R$ 2.534,44) e sub-limite da Liferay (R$ 1.200/mês, pausar após nov/2026), via `BUDGET_RULES_JSON`.
 - **Bot ampliado**: comandos `/status` e `/budget`; `/report` traz report + análise. Testado ao vivo no servidor de teste.
 
+### ✅ Etapa 12 — Painel web, chat e relatórios (V2) *(set/2026)*
+- **Painel web próprio** em `https://midiapaga-api.vtgdev.net` (FastAPI + HTML/JS), interface principal no lugar do Looker: KPIs, gráficos (gasto x teto, CPL por grupo, distribuição), tabela filtrável e **análise do agente**. Login **Google** restrito a `@vertigo.com.br` (o backend valida o domínio).
+- **Chat ao vivo** com o agente (escopo travado só em mídia paga, com **memória da conversa**) e **histórico** compartilhado do time (últimas 20 conversas).
+- **Relatório completo em PDF** (7 seções), com modos **parcial** (mês em curso, com projeção) e **fechamento** (mês encerrado, retrospectivo). Consistente entre quem emite ("gera 1x, lê muitas").
+- **Análise estável**: gerada 1x/dia e congelada (todos veem a mesma leitura), pré-gerada na coleta diária e no fechamento mensal.
+- **Ajustes de negócio** (revisão Julia/Vitor): terminologia "grupo de anúncios", **rateio 50/50** da Liferay, **tetos por mês**, coluna de impressões, e-mail semanal com o acumulado do mês.
+- **Deploy automático** a cada push na `main` (SSH na EC2 + `docker compose`).
+- **Documentação** completa em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
+
 ---
 
 ## Próximas etapas
@@ -130,13 +139,17 @@ Projeto migrado para o GitLab corporativo (origin) como fonte principal; GitHub 
 - [x] Análise do agente (motor próprio + camada IA opcional)
 - [x] Regras de orçamento (teto, override, sub-limites)
 - [x] Testar coleta e reports com dados reais
-- [ ] Hospedar o bot em host sempre-ligado (comandos interativos) — aguardando infra
-- [ ] Cadastrar variáveis no GitLab: `CAMPAIGN_CONFIG_JSON`, `BUDGET_RULES_JSON`, `DISCORD_CHANNEL_ID`, `DISCORD_APPROVER_IDS`
-- [ ] Definir aprovadores de ações + gerar token LinkedIn com escrita (`rw_ads`) para execução
-- [ ] Configurar Pipeline Schedules no GitLab (coleta diária, report semanal/mensal)
-- [ ] Documentar e entregar
+- [x] Hospedar o bot em host sempre-ligado (EC2/VM) — `/report` `/status` `/budget` no ar
+- [x] Cadastrar variáveis no GitLab (`BUDGET_RULES_JSON`, `DISCORD_CHANNEL_ID` etc.); `CAMPAIGN_CONFIG_JSON` passou a ter default no código
+- [x] Configurar Pipeline Schedules no GitLab (coleta diária, report semanal/mensal)
+- [x] **Painel web** com KPIs, gráficos, chat ao vivo e relatório em PDF (`midiapaga-api.vtgdev.net`)
+- [x] Ajustes de negócio: terminologia "grupo de anúncios", rateio 50/50 Liferay, tetos por mês, impressões
+- [x] Documentar e entregar (ver [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md))
 
-> GA4 e Search Console entram em fases futuras.
+### Fases futuras (não priorizadas)
+- [ ] **Execução automática** de ações (pausar / ajustar budget) — exige token `rw_ads` e fluxo de aprovadores. **Por decisão, o agente é consultivo (só recomenda)**; execução fica para uma fase futura, se o time quiser.
+- [ ] GA4 e Search Console.
+- [ ] Rede de segurança: limite de gasto (US$ 5/mês) no console da Anthropic.
 
 ---
 
