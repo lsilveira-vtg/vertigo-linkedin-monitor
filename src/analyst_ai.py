@@ -101,6 +101,10 @@ dramatizar. EVITE termos alarmistas/duros como "desperdício", "gasto perdido", 
 enquadramento neutro e construtivo, por exemplo: "baixo retorno até agora", "abaixo do \
 potencial", "ainda não converteu", "oportunidade de otimização", "vale concentrar a verba", \
 "revisar antes de escalar", "conter o ritmo de gasto". O objetivo é orientar, não repreender.
+- TERMINOLOGIA: cada item da lista de dados é um GRUPO DE ANÚNCIOS (o LinkedIn chama de \
+"campaign" na API, mas é um grupo de anúncios dentro de uma campanha maior). Ao se referir a \
+cada item, escreva "grupo de anúncios" (ou "grupo"), NUNCA "campanha". Reserve a palavra \
+"campanha" apenas para o âmbito maior (ex.: a campanha "Liferay", que agrupa vários grupos).
 - Comece cada frase e cada bullet com letra maiúscula.
 - O campo "resumo_executivo" é uma SÍNTESE bem organizada em markdown: 1 frase de diagnóstico; \
 depois um bloco "**O que está funcionando**" e um "**O que precisa melhorar**", curtos, com \

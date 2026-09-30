@@ -234,30 +234,30 @@
     </section>
     <section class="grid charts">
       <div class="card chart-wide collapsible" data-key="pace"><button class="chead" type="button"><span class="ct">Gasto x teto ao longo do mês</span><span class="chev">▾</span></button><div class="body" id="chartPace"></div></div>
-      <div class="card collapsible" data-key="cpl"><button class="chead" type="button"><span class="ct">CPL por campanha</span><span class="chev">▾</span></button><div class="body" id="chartCpl"></div></div>
+      <div class="card collapsible" data-key="cpl"><button class="chead" type="button"><span class="ct">CPL por grupo de anúncios</span><span class="chev">▾</span></button><div class="body" id="chartCpl"></div></div>
       <div class="card collapsible" data-key="donut"><button class="chead" type="button"><span class="ct">Distribuição do gasto</span><span class="chev">▾</span></button><div class="body" id="chartDonut"></div></div>
     </section>
     <section class="card bars-card" style="margin-bottom:16px">
-      <h2>Gasto por campanha</h2><div class="body" id="bars"></div><div class="bars-foot" id="barsFoot"></div>
+      <h2>Gasto por grupo de anúncios</h2><div class="body" id="bars"></div><div class="bars-foot" id="barsFoot"></div>
     </section>
     <section class="card" style="margin-bottom:16px">
-      <h2 style="padding:14px 16px 12px">Campanhas</h2>
+      <h2 style="padding:14px 16px 12px">Grupos de anúncios</h2>
       <div class="tools"><div class="seg" id="filter">
         <button class="on" data-f="all">Todas</button><button data-f="critica">🔴</button>
         <button data-f="atencao">🟡</button><button data-f="boa">🟢</button></div></div>
       <div class="tscroll"><table><thead><tr>
-        <th>Campanha</th><th>Status</th><th>Invest.</th><th>Leads</th><th>CPL</th><th>Cliques</th><th>CPC</th><th>CTR</th>
+        <th>Grupo de anúncios</th><th>Status</th><th>Invest.</th><th>Leads</th><th>CPL</th><th>Impressões</th><th>Cliques</th><th>CPC</th><th>CTR</th>
       </tr></thead><tbody id="rows"></tbody></table></div>
     </section>
     <section class="card chat">
       <div class="chat-head"><h2>Pergunte ao agente</h2><button class="newconv" id="newConv" type="button">✚ Nova conversa</button></div>
       <div class="chat-wrap">
         <div class="chat-main">
-          <div class="body" id="chat"><div class="msg a">Oi! Posso responder sobre gasto, CPL, campanhas e orçamento, com base nos dados atuais. O que você quer saber?</div></div>
+          <div class="body" id="chat"><div class="msg a">Oi! Posso responder sobre gasto, CPL, grupos de anúncios e orçamento, com base nos dados atuais. O que você quer saber?</div></div>
           <div class="suggest" id="suggest">
-            <button>Qual campanha cortar primeiro?</button>
+            <button>Qual grupo de anúncios cortar primeiro?</button>
             <button>Como está o orçamento?</button>
-            <button>Qual a campanha mais eficiente?</button>
+            <button>Qual o grupo de anúncios mais eficiente?</button>
           </div>
           <form class="composer" id="composer"><input id="q" placeholder="Escreva sua pergunta…" autocomplete="off"><button>Enviar</button></form>
         </div>
@@ -277,17 +277,17 @@
       <div class="modal-body">
         <h3>✅ O que o agente faz</h3>
         <ul>
-          <li>Acompanha as campanhas de <b>LinkedIn Ads</b> e mostra os números do mês: investimento, leads, CPL, CPC, CTR e consumo do teto de verba.</li>
+          <li>Acompanha os grupos de anúncios do <b>LinkedIn Ads</b> e mostra os números do mês: investimento, leads, CPL, CPC, CTR e consumo do teto de verba.</li>
           <li>Gera <b>análise e recomendações</b> como um analista sênior: o que está funcionando, o que melhorar e ações prioritárias.</li>
-          <li>Mostra <b>gráficos</b>: gasto x teto ao longo do mês, CPL por campanha e distribuição do gasto.</li>
-          <li>Responde <b>perguntas ao vivo</b> no chat, sempre com base nos dados atuais das campanhas.</li>
+          <li>Mostra <b>gráficos</b>: gasto x teto ao longo do mês, CPL por grupo de anúncios e distribuição do gasto.</li>
+          <li>Responde <b>perguntas ao vivo</b> no chat, sempre com base nos dados atuais dos grupos de anúncios.</li>
           <li>Concentra o <b>histórico das últimas 20 conversas</b> do chat (compartilhado com o time), para todos consultarem.</li>
           <li>Gera um <b>relatório completo em PDF</b> sob demanda, pronto para enviar, apresentar ou arquivar.</li>
           <li>Envia <b>relatórios por e-mail</b> (semanal e mensal) e guarda tudo na <b>planilha</b> (botão “Consultar planilha”).</li>
         </ul>
         <h3>🚫 O que o agente não faz</h3>
         <ul>
-          <li><b>Não executa ações</b> no LinkedIn: não pausa, não edita e não cria campanhas. Ele apenas <b>recomenda</b>; a decisão é sempre humana.</li>
+          <li><b>Não executa ações</b> no LinkedIn: não pausa, não edita e não cria nada no LinkedIn. Ele apenas <b>recomenda</b>; a decisão é sempre humana.</li>
           <li><b>Não fala de outros assuntos.</b> Responde só sobre mídia paga; recusa segurança da informação, temas aleatórios e pedidos fora do escopo.</li>
           <li><b>Não substitui o CRM.</b> “Leads” aqui são formulários do LinkedIn; a qualidade real (MQL) é confirmada no CRM.</li>
           <li><b>Não inventa números.</b> Se faltar dado, ele diz que não é possível responder.</li>
@@ -297,7 +297,7 @@
           <li>Comece pelos <b>KPIs</b> no topo e pelo alerta de orçamento.</li>
           <li>Leia a <b>Análise &amp; recomendações do agente</b> (síntese + ações prioritárias).</li>
           <li>Em qualquer ação, clique <b>“✨ Gerar insights”</b> para o agente aprofundar no chat.</li>
-          <li>Use o <b>chat</b> “Pergunte ao agente” para perguntas livres (ex.: “qual campanha cortar primeiro?”).</li>
+          <li>Use o <b>chat</b> “Pergunte ao agente” para perguntas livres (ex.: “qual grupo de anúncios cortar primeiro?”).</li>
           <li>O <b>Histórico</b> (lateral do chat) guarda as <b>últimas 20 consultas</b> do time (com rolagem), para todos consultarem. Cada uma pode ser <b>deletada</b> no menu “⋯”.</li>
           <li><b>Recolha os gráficos</b> que não quiser ver (botão de minimizar). Eles abrem por padrão a cada acesso.</li>
           <li>Abra a <b>planilha</b> completa pelo botão no topo.</li>
@@ -307,7 +307,7 @@
         <ul>
           <li>É o <b>“relatório do dia”</b>: usa a <b>mesma análise diária</b> do painel, então quem gerar no mesmo dia recebe o <b>conteúdo idêntico</b>, sempre <b>datado</b>.</li>
           <li>É <b>sob demanda</b>: você gera quando precisar. O conteúdo só muda uma vez por dia, acompanhando a análise (não muda a cada clique).</li>
-          <li>Traz tudo organizado num documento: <b>resumo executivo</b>, indicadores, orçamento, recomendações e desempenho por campanha.</li>
+          <li>Traz tudo organizado num documento: <b>resumo executivo</b>, indicadores, orçamento, recomendações e desempenho por grupo de anúncios.</li>
           <li>Para salvar: abra o relatório e clique <b>“🖨️ Salvar como PDF”</b> (o navegador gera o arquivo em qualidade A4).</li>
         </ul>
         <p class="modal-note">Os <b>números</b> atualizam a cada ~10 minutos. A <b>análise</b> é gerada 1x por dia e fica estável o dia todo, então todo mundo que entra vê a mesma leitura. O <b>relatório em PDF</b> segue essa mesma lógica (o "relatório do dia"). Acesso restrito a contas <b>@vertigo.com.br</b>.</p>
@@ -327,7 +327,7 @@ function jwtPayload(t){
   return JSON.parse(decodeURIComponent(escape(atob(b))));
 }
 const NA='<span class="na">n/d</span>';
-const DASH='<span class="na" title="Não se aplica a esta campanha">-</span>';
+const DASH='<span class="na" title="Não se aplica a este grupo de anúncios">-</span>';
 const BRL0=n=>n==null?NA:"R$ "+Math.round(n).toLocaleString("pt-BR");
 const BRL2=n=>n==null?NA:"R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
 const PCT=n=>n==null?NA:(n*100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";
@@ -417,9 +417,9 @@ function render(){
   const over=k.consumo_teto!=null&&k.consumo_teto>1;
   $("#alert").innerHTML=over?`<div class="alert"><div><b>⚠️ Orçamento acima do teto (${Math.round(k.consumo_teto*100)}% do limite).</b><p>Gasto de ${BRL0(DATA.budget.gasto)} sobre um teto de ${BRL0(DATA.budget.teto)} no mês.</p></div></div>`:"";
   const kpis=[
-    ["Investimento",BRL0(k.investimento),DATA.campaigns.length+" campanhas",false],
+    ["Investimento",BRL0(k.investimento),DATA.campaigns.length+" grupos de anúncios",false],
     ["Leads",k.leads,"Formulários do LinkedIn",false],
-    ["CPL geral",BRL0(k.cpl_geral),"Campanhas de lead",false],
+    ["CPL geral",BRL0(k.cpl_geral),"Grupos de anúncios de lead",false],
     ["Consumo do teto",k.consumo_teto==null?NA:Math.round(k.consumo_teto*100)+"%",DATA.budget.teto?`${BRL0(DATA.budget.gasto)} / ${BRL0(DATA.budget.teto)}`:"Teto não configurado",over],
   ];
   $("#kpis").innerHTML=kpis.map(([l,v,s,c])=>`<div class="kpi ${c?'crit':''}"><div class="lab">${l}</div><div class="val num">${v}</div><div class="sub">${s}</div></div>`).join("");
@@ -427,7 +427,7 @@ function render(){
   $("#bars").innerHTML=DATA.campaigns.map(c=>`<div class="bar-row"><span class="nm" title="${c.nome}">${c.nome}</span><div class="bar-track"><div class="bar-fill" style="width:${(c.investimento/mx*100).toFixed(1)}%"></div></div><span class="vl">${BRL0(c.investimento)}</span></div>`).join("");
   const _tot=DATA.campaigns.reduce((s,c)=>s+(c.investimento||0),0);
   const _top2=[...DATA.campaigns].sort((a,b)=>b.investimento-a.investimento).slice(0,2).reduce((s,c)=>s+(c.investimento||0),0);
-  $("#barsFoot").innerHTML=_tot?`<span>Total: <b>${BRL0(_tot)}</b> em <b>${DATA.campaigns.length}</b> campanhas</span><span>As <b>2 maiores</b> campanhas concentram <b>${Math.round(_top2/_tot*100)}%</b> do gasto</span>`:"";
+  $("#barsFoot").innerHTML=_tot?`<span>Total: <b>${BRL0(_tot)}</b> em <b>${DATA.campaigns.length}</b> grupos de anúncios</span><span>Os <b>2 maiores</b> grupos concentram <b>${Math.round(_top2/_tot*100)}%</b> do gasto</span>`:"";
   // não pintamos a análise por regras (evita o "flash" do texto fraco);
   // o card espera a análise do dia (IA), que já vem quase instantânea do cache.
   $("#resumo").innerHTML='<div class="ana-skel">Preparando a análise do dia…</div>';
@@ -466,7 +466,7 @@ function renderAnalysis(a){
   }).join("");
 }
 function gerarInsights(topico){
-  const q=`Gere insights sobre este ponto: "${topico}". Traga o status atual, as melhorias possíveis e sugestões de otimização, com base nos dados das campanhas.`;
+  const q=`Gere insights sobre este ponto: "${topico}". Traga o status atual, as melhorias possíveis e sugestões de otimização, com base nos dados dos grupos de anúncios.`;
   const box=document.querySelector(".chat");
   if(box)box.scrollIntoView({behavior:"smooth",block:"start"});
   ask(q);
@@ -529,12 +529,12 @@ function chartPace(){
 function chartCpl(){
   const el=$("#chartCpl");
   const cs=DATA.campaigns.filter(c=>c.cpl!=null&&c.tipo!=="trafego").sort((a,b)=>a.cpl-b.cpl);
-  if(!cs.length){el.innerHTML='<div class="chart-empty">Sem campanhas de lead com CPL neste período.</div>';return;}
+  if(!cs.length){el.innerHTML='<div class="chart-empty">Sem grupos de anúncios de lead com CPL neste período.</div>';return;}
   const mx=Math.max(...cs.map(c=>c.cpl)), media=cs.reduce((s,c)=>s+c.cpl,0)/cs.length;
   el.innerHTML=cs.map(c=>{
     const col=c.cpl<=media?"var(--good-l)":(c.cpl<=media*1.3?"var(--warn-l)":"var(--crit-l)");
     return `<div class="cpl-row"><span class="nm" title="${esc(c.nome)}">${esc(shortName(c.nome))}</span><div class="tk"><div class="fl" style="width:${(c.cpl/mx*100).toFixed(1)}%;background:${col}"></div></div><span class="vl">${BRL0(c.cpl)}</span></div>`;
-  }).join("")+`<div class="chart-legend"><span>Média das campanhas de lead: <b style="color:var(--text)">${BRL0(media)}</b></span></div>`;
+  }).join("")+`<div class="chart-legend"><span>Média dos grupos de anúncios de lead: <b style="color:var(--text)">${BRL0(media)}</b></span></div>`;
 }
 
 function chartDonut(){
@@ -564,9 +564,9 @@ function rows(){
     return `<tr><td><span class="cn"><span class="dot" style="background:${HC[c.saude]||'#888'}"></span>${c.nome}${traf?' <span class="t">TRÁFEGO</span>':''}</span></td>
       <td><span class="pill" style="background:var(--surface-2);color:var(--muted)">${ST[c.status]||c.status||NA}</span></td>
       <td class="num">${BRL0(c.investimento)}</td><td class="num">${traf?DASH:c.leads}</td>
-      <td class="num">${traf?DASH:BRL0(c.cpl)}</td><td class="num">${(c.cliques||0).toLocaleString("pt-BR")}</td>
+      <td class="num">${traf?DASH:BRL0(c.cpl)}</td><td class="num">${(c.impressoes||0).toLocaleString("pt-BR")}</td><td class="num">${(c.cliques||0).toLocaleString("pt-BR")}</td>
       <td class="num">${traf?BRL2(c.cpc):DASH}</td><td class="num">${PCT(c.ctr)}</td></tr>`;
-  }).join("")||'<tr><td colspan="8" style="text-align:center;color:var(--faint);padding:24px">Nenhuma campanha neste filtro.</td></tr>';
+  }).join("")||'<tr><td colspan="9" style="text-align:center;color:var(--faint);padding:24px">Nenhum grupo de anúncios neste filtro.</td></tr>';
 }
 
 /* ---- chat ---- */
@@ -589,7 +589,7 @@ let HIST=[], convId=null;
 function newConvId(){try{return crypto.randomUUID().replace(/-/g,"").slice(0,12);}catch(e){return "c"+Date.now();}}
 function novaConversa(){
   convId=null;
-  $("#chat").innerHTML='<div class="msg a md"><p>Nova conversa. O que você quer saber sobre as campanhas?</p></div>';
+  $("#chat").innerHTML='<div class="msg a md"><p>Nova conversa. O que você quer saber sobre os grupos de anúncios?</p></div>';
   const q=$("#q"); if(q)q.focus();
 }
 async function loadHistory(){

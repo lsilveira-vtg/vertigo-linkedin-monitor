@@ -97,7 +97,7 @@ const BRL0=n=>n==null?'<span class="na">n/d</span>':"R$ "+Math.round(n).toLocale
 const BRL2=n=>n==null?'<span class="na">n/d</span>':"R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
 const PCT=n=>n==null?'<span class="na">n/d</span>':(n*100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";
 const NA='<span class="na">n/d</span>';
-const DASH='<span class="na" title="Não se aplica a esta campanha">-</span>';
+const DASH='<span class="na" title="Não se aplica a este grupo de anúncios">-</span>';
 const HC={boa:"#22c55e",atencao:"#e0a12a",critica:"#ef4444"};
 const ST={ACTIVE:"Ativa",PAUSED:"Pausada",COMPLETED:"Concluída",DRAFT:"Rascunho"};
 
@@ -139,9 +139,9 @@ function render(dash, ana){
   $("#stamp").textContent="Relatório do dia · "+(ana&&ana.gerada_em?("análise de "+ana.gerada_em):dash.updated_at);
 
   const kpis=[
-    ["Investimento",BRL0(k.investimento),dash.campaigns.length+" campanhas",false],
+    ["Investimento",BRL0(k.investimento),dash.campaigns.length+" grupos de anúncios",false],
     ["Leads",k.leads,"Formulários do LinkedIn",false],
-    ["CPL geral",BRL0(k.cpl_geral),"Campanhas de lead",false],
+    ["CPL geral",BRL0(k.cpl_geral),"Grupos de anúncios de lead",false],
     ["Consumo do teto",k.consumo_teto==null?NA:Math.round(k.consumo_teto*100)+"%",
        b.teto?`${BRL0(b.gasto)} / ${BRL0(b.teto)}`:"Teto não configurado",over],
   ];
@@ -170,6 +170,7 @@ function render(dash, ana){
       <td class="num">${BRL0(c.investimento)}</td>
       <td class="num">${traf?DASH:c.leads}</td>
       <td class="num">${traf?DASH:BRL0(c.cpl)}</td>
+      <td class="num">${(c.impressoes||0).toLocaleString("pt-BR")}</td>
       <td class="num">${(c.cliques||0).toLocaleString("pt-BR")}</td>
       <td class="num">${traf?BRL2(c.cpc):DASH}</td>
       <td class="num">${PCT(c.ctr)}</td></tr>`;
@@ -185,7 +186,7 @@ function render(dash, ana){
     </div>
 
     <h2 class="sec">Resumo executivo</h2>
-    <p class="lead">Leitura do dia sobre o desempenho das campanhas. Leads = formulários do LinkedIn (a qualidade real, MQL, vem do CRM).</p>
+    <p class="lead">Leitura do dia sobre o desempenho dos grupos de anúncios. Leads = formulários do LinkedIn (a qualidade real, MQL, vem do CRM).</p>
     <div class="md">${md(resumo)}</div>
 
     <h2 class="sec">Indicadores do mês</h2>
@@ -195,12 +196,12 @@ function render(dash, ana){
     <h2 class="sec">Recomendações prioritárias</h2>
     ${acoesHtml||'<p class="lead">Sem recomendações no período.</p>'}
 
-    <h2 class="sec">Desempenho por campanha</h2>
+    <h2 class="sec">Desempenho por grupo de anúncios</h2>
     <table>
-      <thead><tr><th>Campanha</th><th>Status</th><th>Invest.</th><th>Leads</th><th>CPL</th><th>Cliques</th><th>CPC</th><th>CTR</th></tr></thead>
+      <thead><tr><th>Grupo de anúncios</th><th>Status</th><th>Invest.</th><th>Leads</th><th>CPL</th><th>Impressões</th><th>Cliques</th><th>CPC</th><th>CTR</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <div class="foot">"-" indica métrica que não se aplica ao tipo da campanha (ex.: leads/CPL em campanha de tráfego). "n/d" = dado indisponível. Relatório gerado automaticamente pelo agente de mídia paga · Vertigo Tecnologia.</div>
+    <div class="foot">"-" indica métrica que não se aplica ao tipo do grupo de anúncios (ex.: leads/CPL em grupo de tráfego). "n/d" = dado indisponível. Relatório gerado automaticamente pelo agente de mídia paga · Vertigo Tecnologia.</div>
   `;
   $("#state").hidden=true;
   $("#doc").hidden=false;
