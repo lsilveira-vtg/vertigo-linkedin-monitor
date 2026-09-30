@@ -27,8 +27,10 @@ def _ws():
 
 
 def add(conv_id: str, question: str, answer: str, by: str, ts_label: str) -> None:
-    """Registra uma troca dentro de uma conversa."""
-    _ws().append_row([conv_id, ts_label, by, question, answer], value_input_option="RAW")
+    """Registra uma troca dentro de uma conversa (texto puro, sem markdown)."""
+    from .analyst import _strip_md          # tira ** / travessão para a planilha ficar limpa
+    _ws().append_row([conv_id, ts_label, by, _strip_md(question), _strip_md(answer)],
+                     value_input_option="RAW")
     _cache["list"] = None
 
 

@@ -485,6 +485,41 @@ def rebuild_ads_view() -> None:
     sheet.batch_update({"requests": reqs})
 
 
+def format_chat_history() -> None:
+    """Deixa a aba 'Histórico Chat' legível: cabeçalho, congela linha 1, larguras
+    e quebra de texto nas colunas de pergunta/resposta."""
+    sheet = sheets_client.open_sheet()
+    try:
+        ws = sheet.worksheet("Histórico Chat")
+    except Exception:
+        return
+    sid = ws.id
+    n = max(len(ws.col_values(1)), 2)
+    reqs = [
+        _fmt(sid, 0, 1, 0, 5, {"backgroundColor": _c(NAVY),
+             "textFormat": {"bold": True, "foregroundColor": _c(WHITE)}},
+             "backgroundColor,textFormat"),
+        {"updateSheetProperties": {"properties": {"sheetId": sid,
+         "gridProperties": {"frozenRowCount": 1}}, "fields": "gridProperties.frozenRowCount"}},
+        _fmt(sid, 1, n, 3, 5, {"wrapStrategy": "WRAP", "verticalAlignment": "TOP",
+             "textFormat": {"fontSize": 10}}, "wrapStrategy,verticalAlignment,textFormat"),
+    ]
+    for col, px in enumerate([120, 105, 110, 340, 620]):
+        reqs.append(_width(sid, col, px))
+    sheet.batch_update({"requests": reqs})
+
+
+def hide_tab(name: str) -> None:
+    """Oculta uma aba (continua legível pelo Looker/código; só some da vista)."""
+    sheet = sheets_client.open_sheet()
+    try:
+        ws = sheet.worksheet(name)
+    except Exception:
+        return
+    sheet.batch_update({"requests": [{"updateSheetProperties": {
+        "properties": {"sheetId": ws.id, "hidden": True}, "fields": "hidden"}}]})
+
+
 def rebuild_month(month_key: str) -> bool:
     """Gera/atualiza a aba de fechamento de um mês ('Resumo Ago/2026'), congelada
     (retrospectiva). Retorna True se criou a aba; False se o mês não tem dados."""
@@ -543,8 +578,14 @@ def rebuild_all(period_label, start, end):
     # Aba "🔗 Anúncios" com links clicáveis dos posts (mês corrente).
     try:
         rebuild_ads_view()
+        hide_tab("Anúncios")          # a bruta some da vista (segue alimentando o Looker)
     except Exception as exc:
         print(f"  aviso: não atualizei a aba de anúncios: {exc}")
+    # Deixa a aba de histórico do chat legível.
+    try:
+        format_chat_history()
+    except Exception as exc:
+        print(f"  aviso: não formatei o histórico do chat: {exc}")
     # Garante as abas de fechamento dos meses passados (cria as que faltam).
     try:
         ensure_past_month_tabs()
