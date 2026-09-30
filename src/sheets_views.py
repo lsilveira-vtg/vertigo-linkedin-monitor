@@ -399,6 +399,88 @@ def rebuild_per_campaign():
         sheet.batch_update({"requests": reqs})
 
 
+ADS_VIEW_TAB = "🔗 Anúncios"
+ADS_VIEW_HEADER = ["Anúncio", "Campanha", "Invest (R$)", "Impressões", "Cliques", "CTR"]
+
+
+def rebuild_ads_view() -> None:
+    """Aba '🔗 Anúncios': um anúncio por linha (mês corrente), agregado, com LINK
+    clicável para o post no LinkedIn. Lê a aba bruta 'Anúncios' (não a altera)."""
+    sheet = sheets_client.open_sheet()
+    try:
+        master = sheet.worksheet("Anúncios")
+    except Exception:
+        return
+    vals = master.get_all_values()
+    if len(vals) < 2:
+        return
+    cur = date.today().strftime("%Y-%m")          # só o mês corrente
+    ag: dict[str, dict] = {}
+    for r in vals[1:]:
+        if len(r) < 7 or not str(r[0]).startswith(cur):
+            continue
+        a = ag.setdefault(r[1] or "", {"camp": "", "link": "", "inv": 0.0, "imp": 0, "clk": 0})
+        if r[2]:
+            a["camp"] = r[2]
+        if r[3]:
+            a["link"] = r[3]
+        a["inv"] += _num(r[4]); a["imp"] += int(_num(r[5])); a["clk"] += int(_num(r[6]))
+    if not ag:
+        return
+
+    try:
+        ws = sheet.worksheet(ADS_VIEW_TAB)
+    except Exception:
+        ws = sheet.add_worksheet(title=ADS_VIEW_TAB, rows=300, cols=len(ADS_VIEW_HEADER))
+    sid = ws.id
+    nc = len(ADS_VIEW_HEADER)
+
+    rows = [[f"Vertigo · Anúncios do mês — {date.today().strftime('%m/%Y')}"] + [""] * (nc - 1),
+            ADS_VIEW_HEADER]
+    for _aid, a in sorted(ag.items(), key=lambda kv: kv[1]["inv"], reverse=True):
+        ctr = (a["clk"] / a["imp"]) if a["imp"] else 0
+        link = (a["link"] or "").replace('"', "")
+        cell = f'=HYPERLINK("{link}";"Ver anúncio ▸")' if link else "(sem link)"
+        rows.append([cell, a["camp"], round(a["inv"], 2), a["imp"], a["clk"], ctr])
+
+    ws.clear()
+    ws.update(values=rows, range_name="A1", value_input_option="USER_ENTERED")
+
+    d0, d1 = 2, len(rows)
+    cur_f = {"numberFormat": {"type": "CURRENCY", "pattern": "R$ #,##0.00"}}
+    intg = {"numberFormat": {"type": "NUMBER", "pattern": "#,##0"}}
+    pctf = {"numberFormat": {"type": "PERCENT", "pattern": "0.00%"}}
+    reqs = [
+        _fmt(sid, 0, len(rows) + 2, 0, nc, {},
+             "backgroundColor,textFormat,borders,horizontalAlignment,numberFormat,wrapStrategy"),
+        {"unmergeCells": {"range": {"sheetId": sid, "startRowIndex": 0, "endRowIndex": len(rows) + 2,
+                                    "startColumnIndex": 0, "endColumnIndex": nc}}},
+        _merge(sid, 0, 1, 0, nc),
+        _fmt(sid, 0, 1, 0, nc, {"backgroundColor": _c(NAVY), "verticalAlignment": "MIDDLE",
+             "textFormat": {"bold": True, "fontSize": 13, "foregroundColor": _c(WHITE)}},
+             "backgroundColor,verticalAlignment,textFormat"),
+        _fmt(sid, 1, 2, 0, nc, {"backgroundColor": _c(NAVY), "horizontalAlignment": "CENTER",
+             "textFormat": {"bold": True, "foregroundColor": _c(WHITE)}},
+             "backgroundColor,horizontalAlignment,textFormat"),
+        _fmt(sid, d0, d1, 2, 3, cur_f, "numberFormat"),
+        _fmt(sid, d0, d1, 3, 4, intg, "numberFormat"),
+        _fmt(sid, d0, d1, 4, 5, intg, "numberFormat"),
+        _fmt(sid, d0, d1, 5, 6, pctf, "numberFormat"),
+        _fmt(sid, d0, d1, 2, 6, {"horizontalAlignment": "CENTER"}, "horizontalAlignment"),
+        _fmt(sid, d0, d1, 0, 1, {"textFormat": {"foregroundColor": _c((0.18, 0.42, 0.85)),
+             "underline": True}}, "textFormat"),
+        _border(sid, 1, d1, 0, nc),
+    ]
+    for i in range(d0, d1):
+        if (i - d0) % 2 == 1:
+            reqs.append(_fmt(sid, i, i + 1, 0, nc, {"backgroundColor": _c(ZEBRA)}, "backgroundColor"))
+    for col, px in enumerate([150, 260, 120, 110, 90, 80]):
+        reqs.append(_width(sid, col, px))
+    reqs.append({"updateSheetProperties": {"properties": {"sheetId": sid,
+                 "gridProperties": {"frozenRowCount": 2}}, "fields": "gridProperties.frozenRowCount"}})
+    sheet.batch_update({"requests": reqs})
+
+
 def rebuild_month(month_key: str) -> bool:
     """Gera/atualiza a aba de fechamento de um mês ('Resumo Ago/2026'), congelada
     (retrospectiva). Retorna True se criou a aba; False se o mês não tem dados."""
@@ -454,6 +536,11 @@ def rebuild_all(period_label, start, end):
     analysis = analyst.run_analysis(period_label, data, ref_date=end)
     rebuild_summary(period_label, data, analysis, ref_date=end)
     rebuild_per_campaign()
+    # Aba "🔗 Anúncios" com links clicáveis dos posts (mês corrente).
+    try:
+        rebuild_ads_view()
+    except Exception as exc:
+        print(f"  aviso: não atualizei a aba de anúncios: {exc}")
     # Garante as abas de fechamento dos meses passados (cria as que faltam).
     try:
         ensure_past_month_tabs()
