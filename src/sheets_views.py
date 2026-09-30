@@ -326,8 +326,10 @@ PC_HEADER = ["Data", "Invest (R$)", "Leads", "CPL (R$)", "Impressões", "Cliques
              "Reações", "Comentários", "Compartilhamentos"]
 
 
-def rebuild_per_campaign():
-    """Cria/atualiza uma aba por campanha (com linha de TOTAL) a partir de 'Campanhas'."""
+def rebuild_per_campaign(current_names=None):
+    """Cria/atualiza uma aba por campanha (com linha de TOTAL) a partir de 'Campanhas'.
+    `current_names`: nomes das campanhas do mês atual; as que não estão nele têm a aba
+    OCULTA (campanha que parou), para não poluir o workbook."""
     sheet = sheets_client.open_sheet()
     master = sheet.worksheet("Campanhas")
     values = master.get_all_values()
@@ -347,6 +349,14 @@ def rebuild_per_campaign():
 
     for nome, linhas in grupos.items():
         tab = _tab_name(nome)
+        # campanha que não está rodando no mês atual -> oculta a aba (se existir) e pula
+        if current_names is not None and nome not in current_names:
+            if tab in existing:
+                try:
+                    hide_tab(tab)
+                except Exception:
+                    pass
+            continue
         if tab not in existing:
             ws = sheet.add_worksheet(title=tab, rows=400, cols=ncol)
             existing.add(tab)
@@ -413,7 +423,8 @@ def rebuild_per_campaign():
         for col, px in enumerate([110, 105, 70, 95, 100, 85, 85, 110, 135]):
             reqs.append(_width(sid, col, px))
         reqs.append({"updateSheetProperties": {"properties": {"sheetId": sid,
-                     "gridProperties": {"frozenRowCount": 2}}, "fields": "gridProperties.frozenRowCount"}})
+                     "gridProperties": {"frozenRowCount": 2}, "hidden": False},
+                     "fields": "gridProperties.frozenRowCount,hidden"}})
         sheet.batch_update({"requests": reqs})
 
 
@@ -588,7 +599,7 @@ def rebuild_all(period_label, start, end):
     data = collect_campaign_data(start, end)
     analysis = analyst.run_analysis(period_label, data, ref_date=end)
     rebuild_summary(period_label, data, analysis, ref_date=end)
-    rebuild_per_campaign()
+    rebuild_per_campaign({c["nome"] for c in data})
     # Oculta os feeds brutos (seguem alimentando o Looker mesmo ocultos).
     for _bruta in ("Campanhas", "Anúncios"):
         try:
