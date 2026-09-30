@@ -213,6 +213,7 @@ class Pergunta(BaseModel):
     question: str
     conversation_id: str | None = None
     month: str | None = None
+    history: list[dict] | None = None    # trocas anteriores da conversa (item 7)
 
 
 @app.post("/api/ask")
@@ -222,7 +223,7 @@ def ask(p: Pergunta, user: str = Depends(current_user)):
         raise HTTPException(422, "Pergunta vazia.")
     cid = (p.conversation_id or "").strip() or uuid.uuid4().hex[:12]
     raw, dash = _load(p.month)
-    resposta = analyst_ai.answer_question(q, raw, dash.get("budget"))
+    resposta = analyst_ai.answer_question(q, raw, dash.get("budget"), history=p.history)
     try:
         chat_history.add(cid, q, resposta, user.split("@")[0],
                          datetime.now(BRT).strftime("%d/%m %H:%M"))

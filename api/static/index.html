@@ -579,16 +579,16 @@ function addMsg(role,text){
 async function ask(text){
   if(!convId) convId=newConvId();       // abre conversa nova só quando não há uma em andamento
   addMsg("u",text);const wait=addMsg("a","…");
-  try{const r=await api("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:text,conversation_id:convId,month:curMonth})});if(r.conversation_id)convId=r.conversation_id;wait.innerHTML=md(r.answer);loadHistory();}
+  try{const r=await api("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:text,conversation_id:convId,month:curMonth,history:convTurns.slice(-8)})});if(r.conversation_id)convId=r.conversation_id;wait.innerHTML=md(r.answer);convTurns.push({q:text,a:r.answer});loadHistory();}
   catch(e){wait.textContent="(não consegui responder agora)";}
   $("#chat").scrollTop=$("#chat").scrollHeight;
 }
 
 /* ---- histórico do chat, agrupado por CONVERSA (nova entrada só em conversa nova) ---- */
-let HIST=[], convId=null;
+let HIST=[], convId=null, convTurns=[];
 function newConvId(){try{return crypto.randomUUID().replace(/-/g,"").slice(0,12);}catch(e){return "c"+Date.now();}}
 function novaConversa(){
-  convId=null;
+  convId=null; convTurns=[];
   $("#chat").innerHTML='<div class="msg a md"><p>Nova conversa. O que você quer saber sobre os grupos de anúncios?</p></div>';
   const q=$("#q"); if(q)q.focus();
 }
@@ -612,6 +612,7 @@ function closeHistMenus(){document.querySelectorAll(".hist-menu").forEach(m=>m.h
 function showFromHistory(i){
   const c=HIST[i]; if(!c)return;
   convId=c.id;                          // clicar abre e CONTINUA aquela conversa
+  convTurns=(c.msgs||[]).map(m=>({q:m.q,a:m.a}));   // recupera o contexto da conversa
   $("#chat").innerHTML="";
   (c.msgs||[]).forEach(m=>{ addMsg("u",m.q); if(m.a) addMsg("a",m.a); });
   document.querySelector(".chat").scrollIntoView({behavior:"smooth",block:"start"});

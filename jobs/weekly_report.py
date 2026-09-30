@@ -11,10 +11,12 @@ from src.report_builder import build_report_for_period, collect_campaign_data
 
 def main() -> None:
     today = date.today()
-    end = today - timedelta(days=1)          # domingo
-    start = end - timedelta(days=6)          # segunda anterior
+    end = today - timedelta(days=1)          # ontem
+    # Item 1: toda semana mostrar o ACUMULADO do mês (não só a semana). Por isso
+    # o report semanal cobre do início do mês até ontem.
+    start = end.replace(day=1)
 
-    period = f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
+    period = f"acumulado do mês · 01/{end.strftime('%m')} a {end.strftime('%d/%m/%Y')}"
     body = build_report_for_period(start, end)
 
     # Análise do agente (IA se houver chave, senão motor próprio) — anexada ao report
