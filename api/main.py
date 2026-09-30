@@ -55,8 +55,9 @@ app.add_middleware(
 
 # Caches por mês (chave "AAAA-MM"): permitem consultar meses anteriores sem
 # martelar o LinkedIn. A análise tem cache próprio por período.
-_data_cache: dict = {}   # "AAAA-MM" -> {ts, raw, dash}
-_ia_cache: dict = {}     # chave da análise -> {key, analysis}
+_data_cache: dict = {}       # "AAAA-MM" -> {ts, raw, dash}
+_ia_cache: dict = {}         # chave da análise -> {key, analysis}
+_report_cache: dict = {}     # chave do relatório (RPT-...) -> {analysis}
 
 
 # ---------- autenticação ----------
@@ -148,6 +149,42 @@ def _load_analise_ia(month: str | None = None, force: bool = False):
     return analise
 
 
+def _load_report_analise(month: str | None = None, force: bool = False):
+    """Relatório formal (PDF), robusto e estável. Gerado 1x/dia no mês corrente e
+    fixo nos meses passados, persistido em analysis_store sob a chave 'RPT-...'.
+    Assim, quem emitir o PDF (Leandro, Júlia, Vitor...) lê SEMPRE o mesmo relatório."""
+    mk = month or _current_month()
+    if mk == _current_month():
+        key = "RPT-" + datetime.now(BRT).date().isoformat()   # diário no mês corrente
+    else:
+        key = "RPT-M" + mk                                    # fixo nos meses anteriores
+    c = _report_cache.get(key)
+    if not force and c:
+        return c["analysis"]
+    if not force:
+        try:
+            stored = analysis_store.get(key)
+        except Exception as exc:
+            stored = None
+            print(f"  aviso: não li o relatório ({key}): {exc}")
+        if stored:
+            _report_cache[key] = {"analysis": stored}
+            return stored
+    fechado = mk != _current_month()          # mês passado = relatório de fechamento
+    raw, _ = _load(month)
+    start, end = _period(month)
+    rel = dashboard_data.build_report_analysis(start, end, ref_date=end, data=raw, fechado=fechado)
+    rel["gerada_em"] = datetime.now(BRT).strftime("%d/%m %H:%M")
+    rel["modo"] = "fechamento" if fechado else "parcial"
+    rel["mes"] = mk
+    try:
+        analysis_store.save(key, rel["gerada_em"], rel)
+    except Exception as exc:
+        print(f"  aviso: não persisti o relatório ({key}): {exc}")
+    _report_cache[key] = {"analysis": rel}
+    return rel
+
+
 def _meses_disponiveis(n: int = 6) -> list[str]:
     """Últimos n meses (mais recente primeiro), para o seletor de período."""
     y, m = date.today().year, date.today().month
@@ -207,6 +244,13 @@ def dashboard(month: str | None = None, _: str = Depends(current_user)):
 def analysis(month: str | None = None, _: str = Depends(current_user)):
     """Análise rica por IA (carregada à parte para o painel abrir rápido)."""
     return _load_analise_ia(month)
+
+
+@app.get("/api/report-analysis")
+def report_analysis(month: str | None = None, _: str = Depends(current_user)):
+    """Relatório formal (7 seções) para o PDF. Estável por período: mês corrente
+    renova 1x/dia; mês passado é um relatório de fechamento fixo."""
+    return _load_report_analise(month)
 
 
 class Pergunta(BaseModel):

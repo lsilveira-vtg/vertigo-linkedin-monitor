@@ -637,7 +637,7 @@ $("#histList").addEventListener("click",e=>{
 document.addEventListener("click",e=>{if(!e.target.closest(".hist-dots")&&!e.target.closest(".hist-menu"))closeHistMenus();});
 $("#newConv").addEventListener("click",novaConversa);
 $("#monthSel").addEventListener("change",e=>{const cur=e.target.options[0]?e.target.options[0].value:null;curMonth=(e.target.value===cur)?null:e.target.value;load();});
-$("#fullReport").addEventListener("click",()=>window.open("/report","_blank","noopener"));
+$("#fullReport").addEventListener("click",()=>window.open("/report"+qsMonth(),"_blank","noopener"));
 $("#helpBtn").addEventListener("click",()=>$("#help").hidden=false);
 $("#helpClose").addEventListener("click",()=>$("#help").hidden=true);
 $("#help").addEventListener("click",e=>{if(e.target===$("#help"))$("#help").hidden=true;});

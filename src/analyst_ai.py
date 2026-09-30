@@ -123,7 +123,9 @@ cada item, escreva "grupo de anúncios" (ou "grupo"), NUNCA "campanha". Reserve 
 - Comece cada frase e cada bullet com letra maiúscula.
 - O campo "resumo_executivo" é uma SÍNTESE bem organizada em markdown: 1 frase de diagnóstico; \
 depois um bloco "**O que está funcionando**" e um "**O que precisa melhorar**", curtos, com \
-quebras de linha e **negrito** nos números e nomes de campanha. Denso, organizado e fácil de ler.
+quebras de linha e **negrito** nos números e nomes de campanha; feche com uma linha \
+"**Leitura de orçamento**" (1 a 2 frases) sobre o ritmo de gasto vs teto e a projeção de fim \
+de mês. Denso, organizado e de alta qualidade, fácil de ler, sem encher linguiça.
 - O campo "acoes_prioritarias" deve ter SEMPRE de 4 a 6 itens (idealmente 5): ações concretas, \
 curtas e acionáveis (o que fazer e em qual campanha), ordenadas da mais para a menos urgente. \
 Liste as ações mesmo que o tema já apareça no resumo, o resumo NÃO substitui a lista de ações.
@@ -201,6 +203,134 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
         acoes_prioritarias=[_limpar(a) for a in data["acoes_prioritarias"]],
         rodape=rodape,
     )
+
+
+# ======================= RELATÓRIO FORMAL (PDF) =======================
+# Análise mais robusta e estruturada em 7 seções fixas, para o documento que a
+# equipe emite/compartilha. Gerada 1x/dia e persistida (ver analysis_store), então
+# quem emitir (Leandro, Júlia, Vitor...) lê SEMPRE o mesmo relatório do período.
+REPORT_SYSTEM = SYSTEM_PROMPT + """
+
+== MODO RELATÓRIO FORMAL (documento PDF) ==
+Agora você escreve o RELATÓRIO FORMAL de mídia paga do período (documento que a equipe
+emite e compartilha). É mais aprofundado que o resumo do painel: pode desenvolver o
+raciocínio em parágrafos curtos, sem perder objetividade. Mantenha TODAS as regras de
+escrita, tom (consultivo, não agressivo) e terminologia ("grupo de anúncios") acima.
+Preencha estas seções:
+- "contexto": 1 parágrafo situando o período (o que rodou, quantos grupos, o objetivo de
+  cada campanha, e o lembrete de que "leads" são formulários do LinkedIn e o MQL vem do CRM).
+- "resumo_executivo": 2 a 3 parágrafos em markdown. Diagnóstico geral do período, o que
+  puxou o resultado (para cima e para baixo) e a mensagem principal para a liderança.
+  Negrito nos números e nomes. Denso e bem escrito.
+- "orcamento_ritmo": 1 a 2 parágrafos sobre consumo do teto, ritmo de gasto, projeção de
+  fim de mês, distribuição entre as campanhas e o rateio 50/50 da Liferay. Diga se o ritmo
+  pede ajuste.
+- "por_grupo": UM item por grupo de anúncios relevante, cada um com um parágrafo (2 a 4
+  frases): o papel do grupo, os números-chave, a leitura (por que está assim) e o próximo
+  passo. Avalie grupo de tráfego por CPC/CTR/alcance (não cobre leads dele). Use exatamente
+  o "nome" recebido nos dados e classifique a "saude" em boa/atencao/critica.
+- "riscos_oportunidades": principais riscos e principais oportunidades do período, em
+  bullets curtos, cada um com o porquê.
+- "recomendacoes": de 4 a 6 ações concretas e priorizadas (o que fazer, em qual campanha e
+  o efeito esperado no CPL/orçamento).
+- "proximos_passos": de 3 a 4 passos de acompanhamento para o próximo ciclo (o que revisar,
+  quando reavaliar, que hipótese testar).
+"""
+
+REPORT_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "contexto": {"type": "string"},
+        "resumo_executivo": {"type": "string"},
+        "orcamento_ritmo": {"type": "string"},
+        "por_grupo": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "nome": {"type": "string"},
+                    "saude": {"type": "string", "enum": ["boa", "atencao", "critica"]},
+                    "texto": {"type": "string"},
+                },
+                "required": ["nome", "saude", "texto"],
+            },
+        },
+        "riscos_oportunidades": {"type": "string"},
+        "recomendacoes": {"type": "array", "items": {"type": "string"}},
+        "proximos_passos": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["contexto", "resumo_executivo", "orcamento_ritmo", "por_grupo",
+                 "riscos_oportunidades", "recomendacoes", "proximos_passos"],
+}
+
+
+_MODO_PARCIAL = (
+    "MODO DESTE RELATÓRIO: mês EM CURSO (relatório PARCIAL, com dados até a data). "
+    "É um documento operacional para agir AGORA: foque no ritmo de gasto, na projeção de "
+    "fim de mês e nos ajustes a fazer ANTES de o mês fechar. Em 'proximos_passos', liste o "
+    "que revisar ainda neste mês. Deixe claro no 'contexto' que o mês ainda não terminou."
+)
+_MODO_FECHAMENTO = (
+    "MODO DESTE RELATÓRIO: mês JÁ ENCERRADO (relatório de FECHAMENTO, retrospectivo e final). "
+    "NÃO faça projeção de fim de mês (o mês acabou): relate os RESULTADOS CONSOLIDADOS. O foco "
+    "é aprendizado e o que levar adiante. No 'contexto', deixe claro que é um fechamento do mês "
+    "encerrado. Em 'orcamento_ritmo', relate o consumo FINAL do teto (sem projeção). Em "
+    "'riscos_oportunidades', destaque os APRENDIZADOS do período (o que funcionou e o que não). "
+    "Em 'proximos_passos', liste recomendações acionáveis para o PRÓXIMO ciclo (o que aplicar, "
+    "manter, cortar ou testar no mês seguinte, com base no que este mês mostrou)."
+)
+
+
+def build_report_analysis(period_label: str, campaign_data: list[dict],
+                          budgets: dict | None = None, fechado: bool = False) -> dict:
+    """Relatório formal por IA (7 seções). Exige ANTHROPIC_API_KEY (o chamador
+    trata o fallback). Aplica o mesmo sanitizador de escrita das demais análises.
+
+    `fechado`: mês já encerrado, gera relatório de FECHAMENTO (retrospectivo, sem
+    projeção, voltado a aprendizados e ao próximo ciclo). Caso contrário, relatório
+    PARCIAL do mês em curso (operacional, com projeção e ajustes imediatos)."""
+    import anthropic  # import tardio
+
+    client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    payload = {"periodo": period_label, "campanhas": campaign_data, "orcamento": budgets or {}}
+    user_msg = (
+        "Escreva o relatório formal de mídia paga do período no formato estruturado "
+        "solicitado, seguindo todas as regras.\n\n"
+        f"{_MODO_FECHAMENTO if fechado else _MODO_PARCIAL}\n\n"
+        f"Dados:\n```json\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n```"
+    )
+
+    with client.messages.stream(
+        model=config.ANALYST_MODEL,
+        max_tokens=8000,
+        system=REPORT_SYSTEM,
+        thinking={"type": "adaptive"},
+        output_config={"format": {"type": "json_schema", "schema": REPORT_SCHEMA}},
+        messages=[{"role": "user", "content": user_msg}],
+    ) as stream:
+        response = stream.get_final_message()
+
+    data = json.loads(next(b.text for b in response.content if b.type == "text"))
+    try:
+        from . import ai_costs
+        ai_costs.log_and_summarize(response.usage, config.ANALYST_MODEL)
+    except Exception as exc:
+        print(f"  aviso: contador de custo falhou: {exc}")
+
+    return {
+        "contexto": _limpar(data["contexto"]),
+        "resumo_executivo": _limpar(data["resumo_executivo"]),
+        "orcamento_ritmo": _limpar(data["orcamento_ritmo"]),
+        "por_grupo": [
+            {"nome": g["nome"], "saude": g.get("saude", ""), "texto": _limpar(g["texto"])}
+            for g in data["por_grupo"]
+        ],
+        "riscos_oportunidades": _limpar(data["riscos_oportunidades"]),
+        "recomendacoes": [_limpar(x) for x in data["recomendacoes"]],
+        "proximos_passos": [_limpar(x) for x in data["proximos_passos"]],
+    }
 
 
 RECUSA_FORA_ESCOPO = (

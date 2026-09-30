@@ -66,6 +66,16 @@
   .dot{width:9px;height:9px;border-radius:50%;flex:none}
   .t{font-size:9.5px;font-weight:700;color:var(--accent);background:var(--accent-weak);padding:1px 5px;border-radius:4px}
   .na{color:var(--faint)}
+  /* selo de modo (parcial x fechamento) */
+  .modo{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;
+    letter-spacing:.02em;padding:5px 11px;border-radius:999px;margin:2px 0 4px}
+  .modo.parcial{background:var(--accent-weak);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border))}
+  .modo.fechamento{background:#eafaf0;color:var(--good);border:1px solid color-mix(in srgb,var(--good) 30%,var(--border))}
+  .modo .d{width:7px;height:7px;border-radius:50%;background:currentColor}
+  /* parágrafos por grupo (narrativa) */
+  .grp{padding:11px 0;border-top:1px solid var(--surface-2)} .grp:first-child{border-top:0}
+  .grp-h{display:flex;align-items:center;gap:8px;font-size:13.5px;margin-bottom:3px}
+  .grp .md{font-size:13px;color:var(--text)}
   .foot{margin-top:26px;padding-top:14px;border-top:1px solid var(--border);font-size:11.5px;color:var(--faint)}
   .state{max-width:520px;margin:80px auto;text-align:center;color:var(--muted);font-size:14px}
   .state .btn{margin-top:14px}
@@ -133,16 +143,20 @@ function fail(msg){
   $("#state").innerHTML=msg+'<br><a class="btn" href="/">Ir para o painel</a>';
 }
 
-function render(dash, ana){
-  const k=dash.kpis, b=dash.budget||{}, over=k.consumo_teto!=null&&k.consumo_teto>1;
-  const geradoEm=(ana&&ana.gerada_em)?ana.gerada_em:new Date().toLocaleString("pt-BR");
-  $("#stamp").textContent="Relatório do dia · "+(ana&&ana.gerada_em?("análise de "+ana.gerada_em):dash.updated_at);
+function render(dash, rep){
+  const R=rep||{}, k=dash.kpis, b=dash.budget||{}, over=k.consumo_teto!=null&&k.consumo_teto>1;
+  const fechamento=(R.modo==="fechamento");
+  const modoLab=fechamento?"Relatório de fechamento · mês encerrado"
+                          :"Relatório parcial · mês em curso (dados até a data)";
+  const geradoEm=R.gerada_em||new Date().toLocaleString("pt-BR");
+  $("#stamp").textContent=(fechamento?"Fechamento do mês":"Relatório do mês em curso")
+    +(R.gerada_em?(" · gerado em "+R.gerada_em):"");
 
   const kpis=[
     ["Investimento",BRL0(k.investimento),dash.campaigns.length+" grupos de anúncios",false],
     ["Leads",k.leads,"Formulários do LinkedIn",false],
     ["CPL geral",BRL0(k.cpl_geral),"Grupos de anúncios de lead",false],
-    ["Consumo do teto",k.consumo_teto==null?NA:Math.round(k.consumo_teto*100)+"%",
+    [fechamento?"Consumo final do teto":"Consumo do teto",k.consumo_teto==null?NA:Math.round(k.consumo_teto*100)+"%",
        b.teto?`${BRL0(b.gasto)} / ${BRL0(b.teto)}`:"Teto não configurado",over],
   ];
   const kpiHtml=kpis.map(([l,v,s,c])=>`<div class="kpi ${c?'crit':''}"><div class="lab">${l}</div><div class="val num">${v}</div><div class="sub">${s}</div></div>`).join("");
@@ -157,9 +171,12 @@ function render(dash, ana){
       <div class="bud-cap">Gasto <b>${BRL0(b.gasto)}</b> de um teto de <b>${BRL0(b.teto)}</b> no mês.</div>`;
   }
 
-  const resumo=(ana&&ana.resumo)?ana.resumo:(dash.analysis&&dash.analysis.resumo)||"";
-  const acoes=(ana&&ana.acoes&&ana.acoes.length)?ana.acoes:((dash.analysis&&dash.analysis.acoes)||[]);
-  const acoesHtml=acoes.map((a,i)=>`<div class="act"><span class="n">${i+1}</span><div class="md">${md(a)}</div></div>`).join("");
+  const resumo=R.resumo_executivo||(dash.analysis&&dash.analysis.resumo)||"";
+  const grpHtml=(R.por_grupo||[]).map(g=>`<div class="grp"><div class="grp-h"><span class="dot" style="background:${HC[g.saude]||'#888'}"></span><b>${mdEsc(g.nome)}</b></div><div class="md">${md(g.texto||"")}</div></div>`).join("");
+  const recs=(R.recomendacoes&&R.recomendacoes.length)?R.recomendacoes:((dash.analysis&&dash.analysis.acoes)||[]);
+  const acoesHtml=recs.map((a,i)=>`<div class="act"><span class="n">${i+1}</span><div class="md">${md(a)}</div></div>`).join("");
+  const passosHtml=(R.proximos_passos||[]).map((a,i)=>`<div class="act"><span class="n">${i+1}</span><div class="md">${md(a)}</div></div>`).join("");
+  const passosTit=fechamento?"Recomendações para o próximo ciclo":"Próximos passos";
 
   const order=[...dash.campaigns].sort((x,y)=>(y.investimento||0)-(x.investimento||0));
   const rows=order.map(c=>{
@@ -185,22 +202,30 @@ function render(dash, ana){
       </div>
     </div>
 
+    <div class="modo ${fechamento?'fechamento':'parcial'}"><span class="d"></span>${modoLab}</div>
+    ${R.contexto?`<h2 class="sec">Contexto</h2><div class="md">${md(R.contexto)}</div>`:""}
     <h2 class="sec">Resumo executivo</h2>
-    <p class="lead">Leitura do dia sobre o desempenho dos grupos de anúncios. Leads = formulários do LinkedIn (a qualidade real, MQL, vem do CRM).</p>
     <div class="md">${md(resumo)}</div>
 
     <h2 class="sec">Indicadores do mês</h2>
     <div class="kpis">${kpiHtml}</div>
     ${alert}${budget}
+    ${R.orcamento_ritmo?`<h2 class="sec">Orçamento e ritmo</h2><div class="md">${md(R.orcamento_ritmo)}</div>`:""}
 
     <h2 class="sec">Recomendações prioritárias</h2>
     ${acoesHtml||'<p class="lead">Sem recomendações no período.</p>'}
 
     <h2 class="sec">Desempenho por grupo de anúncios</h2>
-    <table>
+    ${grpHtml}
+    <table style="margin-top:14px">
       <thead><tr><th>Grupo de anúncios</th><th>Status</th><th>Invest.</th><th>Leads</th><th>CPL</th><th>Impressões</th><th>Cliques</th><th>CPC</th><th>CTR</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
+
+    ${R.riscos_oportunidades?`<h2 class="sec">${fechamento?'Aprendizados e oportunidades':'Riscos e oportunidades'}</h2><div class="md">${md(R.riscos_oportunidades)}</div>`:""}
+
+    ${passosHtml?`<h2 class="sec">${passosTit}</h2>${passosHtml}`:""}
+
     <div class="foot">"-" indica métrica que não se aplica ao tipo do grupo de anúncios (ex.: leads/CPL em grupo de tráfego). "n/d" = dado indisponível. Relatório gerado automaticamente pelo agente de mídia paga · Vertigo Tecnologia.</div>
   `;
   $("#state").hidden=true;
@@ -210,9 +235,11 @@ function render(dash, ana){
 
 async function boot(){
   if(!tok()){fail("Você precisa entrar no painel primeiro."); return;}
+  const m=new URLSearchParams(location.search).get("month");
+  const qs=m?("?month="+encodeURIComponent(m)):"";
   try{
-    const [dash,ana]=await Promise.all([get("/api/dashboard"), get("/api/analysis").catch(()=>null)]);
-    render(dash, ana);
+    const [dash,rep]=await Promise.all([get("/api/dashboard"+qs), get("/api/report-analysis"+qs).catch(()=>null)]);
+    render(dash, rep);
   }catch(e){
     if(e.message==="auth"){fail("Sua sessão expirou. Entre novamente no painel.");return;}
     fail("Não consegui carregar o relatório agora. Tente de novo pelo painel.");

@@ -6,7 +6,7 @@ campanhas e a análise do agente. Reaproveita a coleta e o analista existentes.
 import calendar
 from datetime import date, datetime, timedelta, timezone
 
-from . import analyst, budget
+from . import analyst, analyst_ai, budget, config
 from .report_builder import collect_campaign_data, RATEIO_FATOR
 
 BRT = timezone(timedelta(hours=-3))
@@ -82,6 +82,78 @@ def build_analysis_ia(start: date, end: date, ref_date: date | None = None,
         "resumo": a.resumo_executivo,
         "acoes": a.acoes_prioritarias,
         "rodape": getattr(a, "rodape", ""),
+    }
+
+
+def _brl(v: float) -> str:
+    return "R$ " + f"{v:,.0f}".replace(",", ".")
+
+
+def build_report_analysis(start: date, end: date, ref_date: date | None = None,
+                          data: list[dict] | None = None, fechado: bool = False) -> dict:
+    """Relatório formal (7 seções) para o PDF. Usa a IA quando há chave; se falhar
+    ou não houver chave, monta uma versão estruturada pelo motor de regras (o PDF
+    nunca fica sem análise). É persistido pela API (1x/dia), então todos veem o mesmo.
+
+    `fechado`: mês encerrado, gera relatório de fechamento (retrospectivo, sem projeção)."""
+    ref_date = ref_date or end
+    if data is None:
+        data = collect_campaign_data(start, end)
+    period = _period_label(start, end)
+    total_invest = sum(c.get("investimento_brl", 0) or 0 for c in data)
+    st = budget.account_status(total_invest, ref_date)
+    budgets = {"gasto": st["gasto"], "teto": st["teto"], "consumo": st["consumo"], "mes": st["mes"]}
+
+    if config.ANTHROPIC_API_KEY:
+        try:
+            return analyst_ai.build_report_analysis(period, data, budgets, fechado=fechado)
+        except Exception as exc:
+            print(f"  aviso: relatório por IA falhou, usando motor próprio: {exc}")
+    return _report_fallback(period, data, ref_date, st, fechado)
+
+
+def _report_fallback(period: str, data: list[dict], ref_date: date, st: dict,
+                     fechado: bool = False) -> dict:
+    """Relatório estruturado sem IA (motor de regras) — rede de segurança."""
+    a = analyst.analyze(period, data, ref_date=ref_date)
+    consumo = st.get("consumo")
+    consumo_txt = f"{round(consumo * 100)}%" if consumo is not None else "n/d"
+    if fechado:
+        contexto = (f"Relatório de fechamento do período {period} (mês encerrado). Foram "
+                    f"acompanhados {len(data)} grupos de anúncios. Leads referem-se a formulários "
+                    "do LinkedIn; a qualificação (MQL) vem do CRM e pode divergir.")
+        orc = (f"Consumo final de {consumo_txt} do teto do mês "
+               f"({_brl(st.get('gasto', 0))} de {_brl(st.get('teto', 0))}). "
+               "A campanha Liferay entra rateada em 50/50 (a Vertigo banca metade).")
+        passos = [
+            "Aplicar no próximo mês os aprendizados dos grupos de melhor CPL.",
+            "Rever verba dos grupos de baixo retorno antes de repetir a estratégia.",
+            "Testar novos criativos/segmentação nos grupos com bom alcance e pouca conversão.",
+        ]
+    else:
+        contexto = (f"Relatório parcial do período {period} (mês em curso). Foram acompanhados "
+                    f"{len(data)} grupos de anúncios. Leads referem-se a formulários do LinkedIn; "
+                    "a qualificação (MQL) vem do CRM e pode divergir.")
+        orc = (f"Consumo de {consumo_txt} do teto do mês "
+               f"({_brl(st.get('gasto', 0))} de {_brl(st.get('teto', 0))}). "
+               "A campanha Liferay entra rateada em 50/50 (a Vertigo banca metade).")
+        passos = [
+            "Reavaliar os grupos de menor retorno ainda neste mês.",
+            "Concentrar a verba nos grupos de menor CPL de leads qualificados.",
+            "Revisar criativos e segmentação antes de escalar qualquer grupo.",
+        ]
+    return {
+        "contexto": contexto,
+        "resumo_executivo": a.resumo_executivo,
+        "orcamento_ritmo": orc,
+        "por_grupo": [
+            {"nome": c.nome, "saude": c.saude,
+             "texto": " ".join(x for x in (c.diagnostico, c.recomendacao) if x)}
+            for c in a.campanhas
+        ],
+        "riscos_oportunidades": "",
+        "recomendacoes": a.acoes_prioritarias,
+        "proximos_passos": passos,
     }
 
 
