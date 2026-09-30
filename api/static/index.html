@@ -433,7 +433,7 @@ function render(){
   $("#barsFoot").innerHTML=_tot?`<span>Total: <b>${BRL0(_tot)}</b> em <b>${DATA.campaigns.length}</b> grupos de anúncios</span><span>Os <b>2 maiores</b> grupos concentram <b>${Math.round(_top2/_tot*100)}%</b> do gasto</span>`:"";
   // não pintamos a análise por regras (evita o "flash" do texto fraco);
   // o card espera a análise do dia (IA), que já vem quase instantânea do cache.
-  $("#resumo").innerHTML='<div class="ana-skel">Preparando a análise do dia…</div>';
+  $("#resumo").innerHTML='<div class="ana-skel">'+(curMonth?("Preparando a análise de "+mesLabel(curMonth)):"Preparando a análise do dia")+'</div>';
   $("#acoes").innerHTML="";
   charts();
   rows();
@@ -476,17 +476,21 @@ function gerarInsights(topico){
   ask(q);
 }
 // análise rica por IA carregada à parte (o painel já abriu com a análise por regras)
+let anaReq=0;   // guarda contra resposta atrasada ao trocar de mês
 async function loadAnalise(){
+  const myReq=++anaReq;
+  $("#anaStamp").hidden=true;       // limpa o selo do mês anterior enquanto carrega
   $("#anaLoad").hidden=false;
   try{
     const ia=await api("/api/analysis"+qsMonth());
+    if(myReq!==anaReq) return;      // trocou de mês nesse meio tempo -> ignora a resposta velha
     if(ia&&(ia.resumo||(ia.acoes&&ia.acoes.length))){
       renderAnalysis(ia);
       if(ia.gerada_em){$("#anaStamp").textContent=" · "+(curMonth?("análise de "+mesLabel(curMonth)):"análise do dia")+", gerada às "+ia.gerada_em;$("#anaStamp").hidden=false;}
     } else { renderAnalysis(DATA.analysis||{}); }   // fallback raro
   }
-  catch(e){ renderAnalysis(DATA.analysis||{}); }    // se a IA falhar de vez, mostra a de regras
-  finally{$("#anaLoad").hidden=true;}
+  catch(e){ if(myReq===anaReq) renderAnalysis(DATA.analysis||{}); }   // IA falhou -> mostra a de regras
+  finally{ if(myReq===anaReq) $("#anaLoad").hidden=true; }
 }
 // cards de gráfico recolhíveis (lembra a preferência de cada pessoa no navegador)
 function setupCollapsibles(){

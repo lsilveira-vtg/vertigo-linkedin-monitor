@@ -52,6 +52,12 @@ def main() -> None:
         except Exception as exc2:
             print(f"  aviso: análise falhou: {exc2}")
 
+    # Pré-congela também o card do painel do mês fechado (abre instantâneo depois).
+    try:
+        reports.load_or_build_card(month=month_str)
+    except Exception as exc:
+        print(f"  aviso: não pré-gerei o card do mês fechado: {exc}")
+
     # Link para o relatório completo (mesma fonte congelada), requer login Vertigo.
     body += (f"\n\n---\nRelatório completo (requer login Vertigo): "
              f"{config.PUBLIC_BASE_URL}/report?month={month_str}")
