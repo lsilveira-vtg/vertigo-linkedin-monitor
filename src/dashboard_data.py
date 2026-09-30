@@ -72,12 +72,13 @@ def _period_label(start: date, end: date) -> str:
 
 
 def build_analysis_ia(start: date, end: date, ref_date: date | None = None,
-                      data: list[dict] | None = None) -> dict:
-    """Só a análise (IA) — parte lenta, carregada à parte para o painel abrir rápido."""
+                      data: list[dict] | None = None, fechado: bool = False) -> dict:
+    """Só a análise (IA) — parte lenta, carregada à parte para o painel abrir rápido.
+    `fechado`: mês encerrado -> análise retrospectiva (ver analyst.run_analysis)."""
     ref_date = ref_date or end
     if data is None:
         data = collect_campaign_data(start, end)
-    a = analyst.run_analysis(_period_label(start, end), data, ref_date=ref_date)
+    a = analyst.run_analysis(_period_label(start, end), data, ref_date=ref_date, fechado=fechado)
     return {
         "resumo": a.resumo_executivo,
         "acoes": a.acoes_prioritarias,

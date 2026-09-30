@@ -64,12 +64,20 @@ def _save(key: str, payload: dict, cache: dict | None) -> None:
         cache[key] = payload
 
 
+# Versão da chave do card. Bump invalida os snapshots antigos (ex.: os gerados
+# antes do rateio 50/50 e do modo retrospectivo de mês fechado), forçando 1
+# regeneração com a lógica atual. Não afeta o relatório (chaves RPT-...).
+_CARD_VER = "2"
+
+
 def load_or_build_card(month: str | None = None, data: list | None = None,
                        force: bool = False, cache: dict | None = None) -> dict:
     """Card de análise do painel (resumo + ações). Estável por dia no mês corrente,
-    fixo nos meses passados."""
+    fixo nos meses passados. Mês passado usa tom retrospectivo (fechado=True)."""
     mk = month or current_month()
-    key = datetime.now(BRT).date().isoformat() if mk == current_month() else "M" + mk
+    fechado = mk != current_month()
+    base = datetime.now(BRT).date().isoformat() if not fechado else "M" + mk
+    key = f"A{_CARD_VER}-{base}"
     if not force:
         got = _get_stored(key, cache)
         if got:
@@ -77,7 +85,7 @@ def load_or_build_card(month: str | None = None, data: list | None = None,
     start, end = period_for(month)
     if data is None:
         data = collect_campaign_data(start, end)
-    analise = dashboard_data.build_analysis_ia(start, end, ref_date=end, data=data)
+    analise = dashboard_data.build_analysis_ia(start, end, ref_date=end, data=data, fechado=fechado)
     analise["gerada_em"] = _now_stamp()
     _save(key, analise, cache)
     return analise

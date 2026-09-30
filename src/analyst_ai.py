@@ -157,15 +157,24 @@ ANALYSIS_SCHEMA = {
 }
 
 
-def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None = None) -> Analysis:
-    """Análise por IA. Retorna um Analysis (mesma estrutura do motor próprio)."""
+def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None = None,
+            fechado: bool = False) -> Analysis:
+    """Análise por IA. Retorna um Analysis (mesma estrutura do motor próprio).
+
+    `fechado`: mês já encerrado -> escreve de forma RETROSPECTIVA (sem "agora"/
+    "imediatamente" nem projeção), com foco no aprendizado e no próximo ciclo."""
     import anthropic  # import tardio — só carrega se a camada for usada
 
     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
     payload = {"periodo": period_label, "campanhas": campaign_data, "orcamento_mensal": budgets or {}}
+    modo = ("\n\nATENÇÃO: este mês JÁ ENCERROU. Escreva de forma RETROSPECTIVA (o mês fechou): "
+            "relate o resultado consolidado e o que se aprendeu, SEM pedir ações 'imediatas'/'agora' "
+            "e SEM projeção de fim de mês. Nas ações prioritárias, foque no que aplicar no PRÓXIMO "
+            "ciclo (manter, replicar, cortar, testar). No resumo, na linha 'Leitura de orçamento', "
+            "relate o consumo FINAL do teto." if fechado else "")
     user_msg = (
         "Analise o desempenho destas campanhas de LinkedIn Ads e produza o feedback "
-        "no formato estruturado solicitado.\n\n"
+        f"no formato estruturado solicitado.{modo}\n\n"
         f"Dados:\n```json\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n```"
     )
 

@@ -444,7 +444,8 @@ function md(t){
   if(t==null||t==="")return"";
   const inl=s=>mdEsc(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")
                        .replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g,"$1<i>$2</i>")
-                       .replace(/`([^`]+?)`/g,"$1");
+                       .replace(/`([^`]+?)`/g,"$1")
+                       .replace(/\*\*/g,"");   // remove ** sem par (a IA às vezes esquece de fechar)
   let out="",inUl=false;
   for(let ln of String(t).split(/\r?\n/)){
     ln=ln.trim();
