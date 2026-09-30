@@ -123,8 +123,12 @@ def rebuild_summary(period_label, campaign_data, analysis, ref_date=None,
     verdict_by_name = {v.nome: v for v in analysis.campanhas}
 
     total_invest = sum(c.get("investimento_brl", 0) or 0 for c in data)
-    total_leads = sum(c.get("leads", 0) or 0 for c in data)
-    cpl_geral = total_invest / total_leads if total_leads else None
+    # CPL geral: só campanhas de LEAD (tráfego/branding não miram formulário),
+    # igual ao dashboard, senão o CPL fica inflado pelo gasto de tráfego.
+    lead_camps = [c for c in data if c.get("tipo", "leads") not in ("trafego", "branding")]
+    invest_leads = sum(c.get("investimento_brl", 0) or 0 for c in lead_camps)
+    total_leads = sum(c.get("leads", 0) or 0 for c in lead_camps)
+    cpl_geral = invest_leads / total_leads if total_leads else None
     consumo = None
     teto = None
     if ref_date is not None:
