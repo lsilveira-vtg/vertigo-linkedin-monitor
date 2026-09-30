@@ -375,31 +375,45 @@ def rebuild_per_campaign():
         cpl_tot = round(tot[1] / tot[2], 2) if tot[2] else "—"
         total_row = ["TOTAL", round(tot[1], 2), int(tot[2]), cpl_tot,
                      int(tot[4]), int(tot[5]), int(tot[6]), int(tot[7]), int(tot[8])]
-        out = [PC_HEADER] + body + [total_row]
+        # Faixa de título + cabeçalho + dados + TOTAL
+        out = [[f"Vertigo · {nome}"] + [""] * (ncol - 1), PC_HEADER] + body + [total_row]
 
         ws.clear()
         ws.update(values=out, range_name="A1")
 
-        last = len(out)
+        last = len(out)          # total de linhas
+        hdr, d0 = 1, 2           # cabeçalho na linha 1; dados a partir da 2
         cur = {"numberFormat": {"type": "CURRENCY", "pattern": "R$ #,##0.00"}}
         intg = {"numberFormat": {"type": "NUMBER", "pattern": "#,##0"}}
         reqs = [
-            _fmt(sid, 0, last + 1, 0, ncol, {}, "backgroundColor,textFormat,borders,numberFormat"),
-            _fmt(sid, 0, 1, 0, ncol, {"backgroundColor": _c(NAVY), "horizontalAlignment": "CENTER",
-                 "textFormat": {"bold": True, "foregroundColor": _c(WHITE)}},
-                 "backgroundColor,horizontalAlignment,textFormat"),
-            _fmt(sid, 1, last, 1, 2, cur, "numberFormat"),
-            _fmt(sid, 1, last, 3, 4, cur, "numberFormat"),
-            _fmt(sid, 1, last, 2, 3, intg, "numberFormat"),
-            _fmt(sid, 1, last, 4, ncol, intg, "numberFormat"),
-            # linha de total em destaque
+            _fmt(sid, 0, last + 1, 0, ncol, {},
+                 "backgroundColor,textFormat,borders,numberFormat,horizontalAlignment"),
+            {"unmergeCells": {"range": {"sheetId": sid, "startRowIndex": 0, "endRowIndex": last + 1,
+                                        "startColumnIndex": 0, "endColumnIndex": ncol}}},
+            _merge(sid, 0, 1, 0, ncol),
+            _fmt(sid, 0, 1, 0, ncol, {"backgroundColor": _c(NAVY), "verticalAlignment": "MIDDLE",
+                 "textFormat": {"bold": True, "fontSize": 12, "foregroundColor": _c(WHITE)}},
+                 "backgroundColor,verticalAlignment,textFormat"),
+            _fmt(sid, hdr, hdr + 1, 0, ncol, {"backgroundColor": _c(NAVY),
+                 "horizontalAlignment": "CENTER", "textFormat": {"bold": True,
+                 "foregroundColor": _c(WHITE)}}, "backgroundColor,horizontalAlignment,textFormat"),
+            _fmt(sid, d0, last, 1, 2, cur, "numberFormat"),      # Invest
+            _fmt(sid, d0, last, 3, 4, cur, "numberFormat"),      # CPL
+            _fmt(sid, d0, last, 2, 3, intg, "numberFormat"),     # Leads
+            _fmt(sid, d0, last, 4, ncol, intg, "numberFormat"),  # Impr/Cliques/Reações/...
+            _fmt(sid, d0, last, 1, ncol, {"horizontalAlignment": "CENTER"}, "horizontalAlignment"),
             _fmt(sid, last - 1, last, 0, ncol, {"backgroundColor": _c(KPI_BG),
-                 "textFormat": {"bold": True}}, "backgroundColor,textFormat"),
-            _border(sid, 0, last, 0, ncol),
-            _width(sid, 0, 100),
-            {"updateSheetProperties": {"properties": {"sheetId": sid,
-             "gridProperties": {"frozenRowCount": 1}}, "fields": "gridProperties.frozenRowCount"}},
+                 "textFormat": {"bold": True}}, "backgroundColor,textFormat"),   # TOTAL
+            _border(sid, hdr, last, 0, ncol),
         ]
+        for i in range(d0, last - 1):        # zebra nas linhas de dados (sem o TOTAL)
+            if (i - d0) % 2 == 1:
+                reqs.append(_fmt(sid, i, i + 1, 0, ncol, {"backgroundColor": _c(ZEBRA)},
+                            "backgroundColor"))
+        for col, px in enumerate([110, 105, 70, 95, 100, 85, 85, 110, 135]):
+            reqs.append(_width(sid, col, px))
+        reqs.append({"updateSheetProperties": {"properties": {"sheetId": sid,
+                     "gridProperties": {"frozenRowCount": 2}}, "fields": "gridProperties.frozenRowCount"}})
         sheet.batch_update({"requests": reqs})
 
 
@@ -575,10 +589,15 @@ def rebuild_all(period_label, start, end):
     analysis = analyst.run_analysis(period_label, data, ref_date=end)
     rebuild_summary(period_label, data, analysis, ref_date=end)
     rebuild_per_campaign()
+    # Oculta os feeds brutos (seguem alimentando o Looker mesmo ocultos).
+    for _bruta in ("Campanhas", "Anúncios"):
+        try:
+            hide_tab(_bruta)
+        except Exception as exc:
+            print(f"  aviso: não ocultei a aba {_bruta}: {exc}")
     # Aba "🔗 Anúncios" com links clicáveis dos posts (mês corrente).
     try:
         rebuild_ads_view()
-        hide_tab("Anúncios")          # a bruta some da vista (segue alimentando o Looker)
     except Exception as exc:
         print(f"  aviso: não atualizei a aba de anúncios: {exc}")
     # Deixa a aba de histórico do chat legível.
