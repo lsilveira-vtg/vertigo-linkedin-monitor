@@ -71,16 +71,47 @@ def _period_label(start: date, end: date) -> str:
     return f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
 
 
+def _resumo_mes_anterior(start: date) -> dict | None:
+    """Resumo compacto do mês ANTERIOR ao `start` (para o paralelo de início de mês)."""
+    prev_end = start - timedelta(days=1)
+    prev_start = prev_end.replace(day=1)
+    try:
+        data = collect_campaign_data(prev_start, prev_end)
+    except Exception as exc:
+        print(f"  aviso: não li o mês anterior: {exc}")
+        return None
+    if not data:
+        return None
+    total = sum(c.get("investimento_brl", 0) or 0 for c in data)
+    lead_camps = [c for c in data if c.get("tipo", "leads") not in ("trafego", "branding")]
+    inv_leads = sum(c.get("investimento_brl", 0) or 0 for c in lead_camps)
+    leads = sum(c.get("leads", 0) or 0 for c in lead_camps)
+    st = budget.account_status(total, prev_end)
+    return {
+        "periodo": _period_label(prev_start, prev_end),
+        "investimento": round(total, 2),
+        "leads": leads,
+        "cpl_geral": round(inv_leads / leads, 2) if leads else None,
+        "consumo_teto": st.get("consumo"),
+        "teto": st.get("teto"),
+        "grupos": [{"nome": c["nome"], "tipo": c.get("tipo", "leads"),
+                    "invest": round(c.get("investimento_brl", 0) or 0, 2),
+                    "leads": c.get("leads", 0) or 0, "cpl": c.get("cpl_brl")} for c in data],
+    }
+
+
 def build_analysis_ia(start: date, end: date, ref_date: date | None = None,
                       data: list[dict] | None = None, fechado: bool = False,
                       inicio_mes: bool = False) -> dict:
     """Só a análise (IA) — parte lenta, carregada à parte para o painel abrir rápido.
-    `fechado`: mês encerrado -> retrospectiva. `inicio_mes`: mês começando -> leitura leve."""
+    `fechado`: mês encerrado -> retrospectiva. `inicio_mes`: mês começando -> leitura leve
+    com paralelo ao mês anterior."""
     ref_date = ref_date or end
     if data is None:
         data = collect_campaign_data(start, end)
+    prev = _resumo_mes_anterior(start) if inicio_mes else None
     a = analyst.run_analysis(_period_label(start, end), data, ref_date=ref_date,
-                             fechado=fechado, inicio_mes=inicio_mes)
+                             fechado=fechado, inicio_mes=inicio_mes, mes_anterior=prev)
     return {
         "resumo": a.resumo_executivo,
         "acoes": a.acoes_prioritarias,
@@ -111,8 +142,9 @@ def build_report_analysis(start: date, end: date, ref_date: date | None = None,
 
     if config.ANTHROPIC_API_KEY:
         try:
-            return analyst_ai.build_report_analysis(period, data, budgets,
-                                                    fechado=fechado, inicio_mes=inicio_mes)
+            prev = _resumo_mes_anterior(start) if inicio_mes else None
+            return analyst_ai.build_report_analysis(period, data, budgets, fechado=fechado,
+                                                    inicio_mes=inicio_mes, mes_anterior=prev)
         except Exception as exc:
             print(f"  aviso: relatório por IA falhou, usando motor próprio: {exc}")
     return _report_fallback(period, data, ref_date, st, fechado)

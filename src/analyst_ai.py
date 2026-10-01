@@ -157,27 +157,31 @@ ANALYSIS_SCHEMA = {
 }
 
 
-# Modo "início de mês": poucos dias de dados -> leitura leve, sem alarme de teto.
+# Modo "início de mês": poucos dias de dados -> leitura leve + paralelo com o mês anterior.
 _MODO_INICIO = (
-    "MODO INÍCIO DE MÊS: o mês está COMEÇANDO (poucos dias de dados). NÃO alarme sobre o "
-    "teto (consumo baixo é natural no início) nem tire conclusões fortes (amostra pequena). "
-    "Trate os números como PARCIAIS e provisórios. Foque em: se as campanhas estão no ar e "
-    "no ritmo inicial de gasto/CPL; e lembre que o balanço completo do mês anterior está no "
-    "período anterior (basta trocar o mês no painel). Nas ações, priorize acompanhar e ajustar "
-    "o ritmo, não cortes definitivos."
+    "MODO INÍCIO DE MÊS: o mês está COMEÇANDO (poucos dias de dados), então os números do "
+    "período atual são PARCIAIS. NÃO alarme sobre o teto (consumo baixo é natural agora) nem "
+    "tire conclusões fortes do mês atual. Em vez disso, use o campo 'mes_anterior' (resultado "
+    "do mês passado) para: (1) fazer um PARALELO, o que funcionou e o que não funcionou no mês "
+    "anterior (melhores e piores grupos por CPL, consumo do teto); e (2) PROJETAR um plano para "
+    "ESTE mês, onde concentrar verba, o que replicar, o que evitar e qual teto respeitar. Deixe "
+    "claro que é um plano inicial baseado no histórico, a confirmar conforme os dados do mês "
+    "chegarem. Nas ações prioritárias, foque nesse plano e no acompanhamento do ritmo."
 )
 
 
 def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None = None,
-            fechado: bool = False, inicio_mes: bool = False) -> Analysis:
+            fechado: bool = False, inicio_mes: bool = False, mes_anterior: dict | None = None) -> Analysis:
     """Análise por IA. Retorna um Analysis (mesma estrutura do motor próprio).
 
     `fechado`: mês encerrado -> retrospectiva (sem projeção, foco em aprendizado).
-    `inicio_mes`: mês começando -> leitura leve, sem alarme de teto (ver _MODO_INICIO)."""
+    `inicio_mes`: mês começando -> leitura leve + paralelo com `mes_anterior` (ver _MODO_INICIO)."""
     import anthropic  # import tardio — só carrega se a camada for usada
 
     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
     payload = {"periodo": period_label, "campanhas": campaign_data, "orcamento_mensal": budgets or {}}
+    if mes_anterior:
+        payload["mes_anterior"] = mes_anterior
     if fechado:
         modo = ("\n\nATENÇÃO: este mês JÁ ENCERROU. Escreva de forma RETROSPECTIVA (o mês fechou): "
                 "relate o resultado consolidado e o que se aprendeu, SEM pedir ações 'imediatas'/'agora' "
@@ -310,7 +314,7 @@ _MODO_FECHAMENTO = (
 
 def build_report_analysis(period_label: str, campaign_data: list[dict],
                           budgets: dict | None = None, fechado: bool = False,
-                          inicio_mes: bool = False) -> dict:
+                          inicio_mes: bool = False, mes_anterior: dict | None = None) -> dict:
     """Relatório formal por IA (7 seções). Exige ANTHROPIC_API_KEY (o chamador
     trata o fallback). Aplica o mesmo sanitizador de escrita das demais análises.
 
@@ -321,6 +325,8 @@ def build_report_analysis(period_label: str, campaign_data: list[dict],
 
     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
     payload = {"periodo": period_label, "campanhas": campaign_data, "orcamento": budgets or {}}
+    if mes_anterior:
+        payload["mes_anterior"] = mes_anterior
     bloco = _MODO_FECHAMENTO if fechado else (_MODO_INICIO if inicio_mes else _MODO_PARCIAL)
     user_msg = (
         "Escreva o relatório formal de mídia paga do período no formato estruturado "

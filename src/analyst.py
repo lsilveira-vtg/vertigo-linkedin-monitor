@@ -295,7 +295,8 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
 
 
 def run_analysis(period_label: str, campaign_data: list[dict], budgets: dict | None = None,
-                 ref_date=None, fechado: bool = False, inicio_mes: bool = False) -> Analysis:
+                 ref_date=None, fechado: bool = False, inicio_mes: bool = False,
+                 mes_anterior: dict | None = None) -> Analysis:
     """Ponto de entrada único. Usa a camada de IA se ANTHROPIC_API_KEY estiver
     configurada (com fallback para o motor próprio em caso de erro); senão usa
     o motor próprio de regras. Os alertas de orçamento (ref_date) são sempre
@@ -319,7 +320,8 @@ def run_analysis(period_label: str, campaign_data: list[dict], budgets: dict | N
                         "consumo_do_teto": st["consumo"],
                     }
             result = analyst_ai.analyze(period_label, campaign_data, budgets_ia,
-                                        fechado=fechado, inicio_mes=inicio_mes)
+                                        fechado=fechado, inicio_mes=inicio_mes,
+                                        mes_anterior=mes_anterior)
             # Garante os alertas de orçamento no topo, independentemente da camada IA.
             # Em mês FECHADO não prependemos os alertas operacionais ("reduzir agora"):
             # a IA já relata o orçamento de forma retrospectiva.

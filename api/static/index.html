@@ -113,6 +113,9 @@
     border-radius:10px;padding:9px 14px;cursor:pointer;transition:background .15s,color .15s}
   .fullbtn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
   .ana-skel{color:var(--muted);font-size:14px;padding:10px 0}
+  .hook{background:var(--accent-weak);border:1px solid color-mix(in srgb,var(--accent) 25%,var(--border));border-radius:10px;padding:9px 13px;margin:0 0 14px;font-size:13px;color:var(--text)}
+  .hook a{color:var(--accent);font-weight:600;text-decoration:none;cursor:pointer}
+  .hook a:hover{text-decoration:underline}
   .ana-skel::after{content:"";display:inline-block;width:1em;text-align:left;animation:dots 1.2s steps(4,end) infinite}
   @keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
   .act .ac{flex:1;min-width:0}
@@ -225,6 +228,7 @@
     <div class="periodbar"><span class="pl">Período</span><select id="monthSel" class="msel"></select></div>
     <div class="updated" id="updated"></div>
     <div id="alert"></div>
+    <div id="monthHook" class="hook" hidden></div>
     <section class="grid kpis" id="kpis"></section>
     <section class="card analysis hero collapsible" data-key="analise">
       <button class="chead" type="button"><span class="ct">Análise &amp; recomendações do agente <span id="anaLoad" class="anaload" hidden>· aprofundando com IA…</span><span id="anaStamp" class="anaload" hidden></span></span><span class="chev">▾</span></button>
@@ -389,6 +393,7 @@ async function enter(){
 let curMonth=null;   // null = mês corrente
 const MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 function mesLabel(ym){const p=String(ym).split("-");const nome=MESES[(+p[1]||1)-1]||p[1];return nome.charAt(0).toUpperCase()+nome.slice(1)+"/"+p[0];}
+function prevMonthKey(){const d=new Date();const m=d.getMonth();return m===0?((d.getFullYear()-1)+"-12"):(d.getFullYear()+"-"+String(m).padStart(2,"0"));}
 const qsMonth=()=>curMonth?("?month="+encodeURIComponent(curMonth)):"";
 async function loadMonths(){
   try{
@@ -417,6 +422,16 @@ async function load(){
 function render(){
   const k=DATA.kpis;
   $("#updated").textContent="Período "+DATA.period+" · atualizado "+DATA.updated_at+" · leads = formulários do LinkedIn";
+  // Gancho de início de mês: 1ª semana vendo o mês atual -> link pro fechamento do mês anterior.
+  const hk=$("#monthHook");
+  if(hk){
+    if(!curMonth && new Date().getDate()<=7){
+      const prev=prevMonthKey();
+      hk.innerHTML=`📅 O mês está começando, com poucos dados ainda. <a id="hookPrev">Ver o fechamento de <b>${mesLabel(prev)}</b> →</a>`;
+      hk.hidden=false;
+      const a=$("#hookPrev"); if(a) a.onclick=()=>{const s=$("#monthSel"); if(s) s.value=prev; curMonth=prev; load();};
+    } else { hk.hidden=true; }
+  }
   const over=k.consumo_teto!=null&&k.consumo_teto>1;
   $("#alert").innerHTML=over?`<div class="alert"><div><b>⚠️ Orçamento acima do teto (${Math.round(k.consumo_teto*100)}% do limite).</b><p>Gasto de ${BRL0(DATA.budget.gasto)} sobre um teto de ${BRL0(DATA.budget.teto)} no mês.</p></div></div>`:"";
   const kpis=[

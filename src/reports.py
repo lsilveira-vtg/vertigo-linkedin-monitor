@@ -68,7 +68,7 @@ def _save(key: str, payload: dict, cache: dict | None) -> None:
 # Versão da chave do card. Bump invalida os snapshots antigos (ex.: os gerados
 # antes do rateio 50/50 e do modo retrospectivo de mês fechado), forçando 1
 # regeneração com a lógica atual. Não afeta o relatório (chaves RPT-...).
-_CARD_VER = "3"
+_CARD_VER = "4"
 
 
 def load_or_build_card(month: str | None = None, data: list | None = None,
