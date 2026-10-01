@@ -173,6 +173,13 @@ async def budget_cmd(interaction: discord.Interaction):
     data = await asyncio.to_thread(collect_campaign_data, start, end)
     total = sum(c.get("investimento_brl", 0) or 0 for c in data)
     st = budget.account_status(total, end)
+    try:
+        from src import dashboard_data
+        rateio_nomes = {c["nome"] for c in data if c.get("rateio_5050")}
+        traf_nomes = {c["nome"] for c in data if c.get("tipo", "leads") in ("trafego", "branding")}
+        cpl_consol = await asyncio.to_thread(dashboard_data.cpl_consolidado, rateio_nomes, traf_nomes)
+    except Exception:
+        cpl_consol = None
     lines = [f"**Orçamento ({end.strftime('%m/%Y')})**"]
     if st["teto"]:
         consumo = f"{st['consumo'] * 100:.0f}%" if st["consumo"] is not None else "n/d"
@@ -180,6 +187,8 @@ async def budget_cmd(interaction: discord.Interaction):
         lines.append(f"Conta (total): {_brl(st['gasto'])} / {_brl(st['teto'])} ({consumo}){alerta}")
     else:
         lines.append(f"Conta (total): {_brl(total)} (teto não configurado)")
+    if cpl_consol:
+        lines.append(f"CPL consolidado (histórico): {_brl(cpl_consol)}")
     for c in data:
         regra = budget.campaign_rule(c["nome"])
         if regra and regra.get("limite_mensal"):

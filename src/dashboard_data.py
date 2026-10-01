@@ -123,6 +123,41 @@ def _brl(v: float) -> str:
     return "R$ " + f"{v:,.0f}".replace(",", ".")
 
 
+def cpl_consolidado(rateio_nomes: set | None = None, traf_nomes: set | None = None):
+    """CPL blended de TODO o histórico disponível (aba 'Campanhas'): só grupos de
+    LEAD (exclui tráfego/branding) e com o rateio 50/50 da Liferay aplicado. É um
+    benchmark estável, usado como referência frente ao CPL do mês."""
+    rateio_nomes = rateio_nomes or set()
+    traf_nomes = traf_nomes or set()
+    try:
+        from .sheets_client import open_sheet
+        linhas = open_sheet().worksheet("Campanhas").get_all_values()
+    except Exception as exc:
+        print(f"  aviso: CPL consolidado indisponível: {exc}")
+        return None
+    if len(linhas) < 2:
+        return None
+    header = linhas[0]
+
+    def _idx(nome, pad):
+        try:
+            return header.index(nome)
+        except ValueError:
+            return pad
+    i_nome, i_inv, i_leads = _idx("Campanha", 1), _idx("Invest (R$)", 2), _idx("Leads", 3)
+    inv_leads, leads = 0.0, 0
+    for r in linhas[1:]:
+        if len(r) <= max(i_nome, i_inv, i_leads):
+            continue
+        nome = (r[i_nome] or "").strip()
+        if not nome or nome in traf_nomes:        # tráfego/branding não entra no CPL
+            continue
+        fator = RATEIO_FATOR if nome in rateio_nomes else 1.0
+        inv_leads += _num(r[i_inv]) * fator
+        leads += int(_num(r[i_leads]))
+    return round(inv_leads / leads, 2) if leads > 0 else None
+
+
 def build_report_analysis(start: date, end: date, ref_date: date | None = None,
                           data: list[dict] | None = None, fechado: bool = False,
                           inicio_mes: bool = False) -> dict:
@@ -212,6 +247,10 @@ def build_dashboard_data(start: date, end: date, ref_date: date | None = None,
     invest_leads = sum(c.get("investimento_brl", 0) or 0 for c in lead_camps)
     total_leads = sum(c.get("leads", 0) or 0 for c in lead_camps)
     cpl_geral = round(invest_leads / total_leads, 2) if total_leads else None
+    # CPL consolidado (todo o histórico) — benchmark estável frente ao CPL do mês.
+    rateio_nomes = {c["nome"] for c in data if c.get("rateio_5050")}
+    traf_nomes = {c["nome"] for c in data if c.get("tipo", "leads") in ("trafego", "branding")}
+    cpl_consol = cpl_consolidado(rateio_nomes, traf_nomes)
 
     st = budget.account_status(total_invest, ref_date)
 
@@ -243,6 +282,7 @@ def build_dashboard_data(start: date, end: date, ref_date: date | None = None,
             "investimento": round(total_invest, 2),
             "leads": total_leads,
             "cpl_geral": cpl_geral,
+            "cpl_consolidado": cpl_consol,
             "consumo_teto": st["consumo"],
         },
         "budget": {

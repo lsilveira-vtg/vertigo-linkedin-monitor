@@ -129,6 +129,14 @@ def rebuild_summary(period_label, campaign_data, analysis, ref_date=None,
     invest_leads = sum(c.get("investimento_brl", 0) or 0 for c in lead_camps)
     total_leads = sum(c.get("leads", 0) or 0 for c in lead_camps)
     cpl_geral = invest_leads / total_leads if total_leads else None
+    # CPL consolidado (todo o histórico) — benchmark estável (mesma fonte do dashboard).
+    try:
+        from . import dashboard_data
+        rateio_nomes = {c["nome"] for c in data if c.get("rateio_5050")}
+        traf_nomes = {c["nome"] for c in data if c.get("tipo", "leads") in ("trafego", "branding")}
+        cpl_consol = dashboard_data.cpl_consolidado(rateio_nomes, traf_nomes)
+    except Exception:
+        cpl_consol = None
     consumo = None
     teto = None
     if ref_date is not None:
@@ -147,7 +155,8 @@ def rebuild_summary(period_label, campaign_data, analysis, ref_date=None,
                "(MQLs vêm do CRM e podem diferir)")
     rows.append([sub] + [""] * (NCOLS - 1))
     rows.append([""] * NCOLS)
-    rows.append(["INVESTIMENTO TOTAL", "", "", "LEADS", "", "", "CPL GERAL", "", "",
+    cpl_lbl = "CPL DO MÊS" + (f" · consol. {_brl(cpl_consol)}" if cpl_consol else "")
+    rows.append(["INVESTIMENTO TOTAL", "", "", "LEADS", "", "", cpl_lbl, "", "",
                  "CONSUMO DO TETO", "", ""])
     kpi_teto = (f"{consumo * 100:.0f}%" if consumo is not None else "—")
     rows.append([_brl(total_invest), "", "", str(total_leads), "", "",

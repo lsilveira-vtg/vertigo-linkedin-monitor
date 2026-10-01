@@ -438,7 +438,7 @@ function render(){
   const kpis=[
     ["Investimento",BRL0(k.investimento),DATA.campaigns.length+" grupos de anúncios",false],
     ["Leads",k.leads,"Formulários do LinkedIn",false],
-    ["CPL geral",BRL0(k.cpl_geral),"Grupos de anúncios de lead",false],
+    ["CPL do mês",BRL0(k.cpl_geral),(k.cpl_consolidado!=null?("Consolidado (histórico): "+BRL0(k.cpl_consolidado)):"Grupos de anúncios de lead"),false],
     ["Consumo do teto",k.consumo_teto==null?NA:Math.round(k.consumo_teto*100)+"%",DATA.budget.teto?`${BRL0(DATA.budget.gasto)} / ${BRL0(DATA.budget.teto)}`:"Teto não configurado",over],
   ];
   $("#kpis").innerHTML=kpis.map(([l,v,s,c])=>`<div class="kpi ${c?'crit':''}"><div class="lab">${l}</div><div class="val num">${v}</div><div class="sub">${s}</div></div>`).join("");
