@@ -69,6 +69,7 @@ def _save(key: str, payload: dict, cache: dict | None) -> None:
 # antes do rateio 50/50 e do modo retrospectivo de mês fechado), forçando 1
 # regeneração com a lógica atual. Não afeta o relatório (chaves RPT-...).
 _CARD_VER = "4"
+_RPT_VER = "2"     # versão da chave do relatório do mês corrente (bump = regenera hoje)
 
 
 def load_or_build_card(month: str | None = None, data: list | None = None,
@@ -100,7 +101,9 @@ def load_or_build_report(month: str | None = None, data: list | None = None,
     passado = fechamento (imutável). Congela sob a chave RPT-... na planilha."""
     mk = month or current_month()
     fechado = mk != current_month()
-    key = ("RPT-M" + mk) if fechado else ("RPT-" + datetime.now(BRT).date().isoformat())
+    # Mês corrente versionado (_RPT_VER): bump invalida o relatório de hoje quando a
+    # lógica muda (ex.: correção do período). Mês passado = fixo (fechamento imutável).
+    key = ("RPT-M" + mk) if fechado else (f"RPT{_RPT_VER}-" + datetime.now(BRT).date().isoformat())
     if not force:
         got = _get_stored(key, cache)
         if got:
