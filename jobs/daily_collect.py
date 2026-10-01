@@ -124,12 +124,16 @@ def main() -> None:
             sheets_client.append_rows("Anúncios", ad_rows)
         print(f"Coleta concluída: {len(campaign_rows)} linhas de campanha, {len(ad_rows)} de anúncios.")
 
+    # Período do MÊS CORRENTE (mesma regra do dashboard e da análise: reports.period_for),
+    # para a planilha, o painel e os textos ficarem sempre com os MESMOS números.
+    from src import reports
+    m_start, m_end = reports.period_for(None)
+
     # Atualiza as visualizações organizadas (Resumo + aba por campanha) do mês corrente
     try:
         from src import sheets_views
-        month_start = yesterday.replace(day=1)
-        period = f"{month_start.strftime('%d/%m')} a {yesterday.strftime('%d/%m/%Y')}"
-        sheets_views.rebuild_all(period, month_start, yesterday)
+        period = f"{m_start.strftime('%d/%m')} a {m_end.strftime('%d/%m/%Y')}"
+        sheets_views.rebuild_all(period, m_start, m_end)
         print("Visualizações (Resumo + abas por campanha) atualizadas.")
     except Exception as exc:
         print(f"  aviso: falha ao atualizar visualizações: {exc}")
@@ -138,10 +142,8 @@ def main() -> None:
     # quando a primeira pessoa abrir o painel, a análise já está pronta e idêntica para
     # todos (single source of truth), sem a "corrida" do primeiro clique.
     try:
-        from src import reports
         from src.report_builder import collect_campaign_data
-        m_start = yesterday.replace(day=1)
-        dados = collect_campaign_data(m_start, yesterday)
+        dados = collect_campaign_data(m_start, m_end)
         reports.load_or_build_card(data=dados)
         reports.load_or_build_report(data=dados)
         print("Textos do dia pré-gerados (card + relatório).")

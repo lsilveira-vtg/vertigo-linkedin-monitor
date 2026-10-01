@@ -149,11 +149,12 @@ async def status(interaction: discord.Interaction):
         await interaction.response.send_message("Use este comando no canal do projeto.", ephemeral=True)
         return
     await interaction.response.defer()
-    today = date.today()
-    start = today.replace(day=1)
-    period = f"{start.strftime('%d/%m')} a {today.strftime('%d/%m/%Y')}"
-    data = await asyncio.to_thread(collect_campaign_data, start, today)
-    analysis = await asyncio.to_thread(analyst.run_analysis, period, data, None, today)
+    from src import reports
+    start, end = reports.period_for(None)          # mesmo período do dashboard/planilha
+    inicio = end.day <= 7
+    period = f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
+    data = await asyncio.to_thread(collect_campaign_data, start, end)
+    analysis = await asyncio.to_thread(analyst.run_analysis, period, data, None, end, False, inicio)
     emoji = {"boa": "🟢", "atencao": "🟡", "critica": "🔴"}
     lines = [f"**Status das campanhas ({period})**", analyst._sem_travessao(analysis.resumo_executivo), ""]
     for v in analysis.campanhas:
@@ -167,12 +168,12 @@ async def budget_cmd(interaction: discord.Interaction):
         await interaction.response.send_message("Use este comando no canal do projeto.", ephemeral=True)
         return
     await interaction.response.defer()
-    today = date.today()
-    start = today.replace(day=1)
-    data = await asyncio.to_thread(collect_campaign_data, start, today)
+    from src import reports
+    start, end = reports.period_for(None)          # mesmo período do dashboard/planilha
+    data = await asyncio.to_thread(collect_campaign_data, start, end)
     total = sum(c.get("investimento_brl", 0) or 0 for c in data)
-    st = budget.account_status(total, today)
-    lines = [f"**Orçamento ({today.strftime('%m/%Y')})**"]
+    st = budget.account_status(total, end)
+    lines = [f"**Orçamento ({end.strftime('%m/%Y')})**"]
     if st["teto"]:
         consumo = f"{st['consumo'] * 100:.0f}%" if st["consumo"] is not None else "n/d"
         alerta = " ⚠️" if st["consumo"] and st["consumo"] >= 0.90 else ""
