@@ -91,11 +91,13 @@ def _current_month() -> str:
 
 
 def _period(month: str | None = None):
-    """Intervalo do mês. Mês corrente vai até ontem; mês passado, até o fim do mês."""
+    """Intervalo do mês. Mês corrente = o mês de HOJE (do dia 1 até ontem); no 1º
+    dia ainda não há dia fechado, então o range é o próprio dia 1. Mês passado vai
+    até o fim do mês."""
     today = date.today()
     if not month:
-        end = today - timedelta(days=1)
-        return end.replace(day=1), end
+        start = today.replace(day=1)              # mês corrente (o de hoje)
+        return start, max(start, today - timedelta(days=1))
     y, m = (int(x) for x in month.split("-"))
     start = date(y, m, 1)
     last = date(y, m, calendar.monthrange(y, m)[1])

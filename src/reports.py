@@ -25,11 +25,12 @@ def current_month() -> str:
 
 
 def period_for(month: str | None):
-    """Intervalo do mês. Mês corrente vai até ontem; mês passado, até o fim do mês."""
+    """Intervalo do mês. Mês corrente = o mês de HOJE (dia 1 até ontem; no 1º dia,
+    o range é o próprio dia 1). Mês passado vai até o fim do mês."""
     today = date.today()
     if not month:
-        end = today - timedelta(days=1)
-        return end.replace(day=1), end
+        start = today.replace(day=1)              # mês corrente (o de hoje)
+        return start, max(start, today - timedelta(days=1))
     y, m = (int(x) for x in month.split("-"))
     start = date(y, m, 1)
     last = date(y, m, calendar.monthrange(y, m)[1])
@@ -67,7 +68,7 @@ def _save(key: str, payload: dict, cache: dict | None) -> None:
 # Versão da chave do card. Bump invalida os snapshots antigos (ex.: os gerados
 # antes do rateio 50/50 e do modo retrospectivo de mês fechado), forçando 1
 # regeneração com a lógica atual. Não afeta o relatório (chaves RPT-...).
-_CARD_VER = "2"
+_CARD_VER = "3"
 
 
 def load_or_build_card(month: str | None = None, data: list | None = None,
@@ -83,9 +84,11 @@ def load_or_build_card(month: str | None = None, data: list | None = None,
         if got:
             return got
     start, end = period_for(month)
+    inicio_mes = (not fechado) and end.day <= 7      # primeira semana do mês corrente
     if data is None:
         data = collect_campaign_data(start, end)
-    analise = dashboard_data.build_analysis_ia(start, end, ref_date=end, data=data, fechado=fechado)
+    analise = dashboard_data.build_analysis_ia(start, end, ref_date=end, data=data,
+                                               fechado=fechado, inicio_mes=inicio_mes)
     analise["gerada_em"] = _now_stamp()
     _save(key, analise, cache)
     return analise
@@ -103,9 +106,11 @@ def load_or_build_report(month: str | None = None, data: list | None = None,
         if got:
             return got
     start, end = period_for(month)
+    inicio_mes = (not fechado) and end.day <= 7      # primeira semana do mês corrente
     if data is None:
         data = collect_campaign_data(start, end)
-    rel = dashboard_data.build_report_analysis(start, end, ref_date=end, data=data, fechado=fechado)
+    rel = dashboard_data.build_report_analysis(start, end, ref_date=end, data=data,
+                                               fechado=fechado, inicio_mes=inicio_mes)
     rel["gerada_em"] = _now_stamp()
     rel["modo"] = "fechamento" if fechado else "parcial"
     rel["mes"] = mk

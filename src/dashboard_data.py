@@ -72,13 +72,15 @@ def _period_label(start: date, end: date) -> str:
 
 
 def build_analysis_ia(start: date, end: date, ref_date: date | None = None,
-                      data: list[dict] | None = None, fechado: bool = False) -> dict:
+                      data: list[dict] | None = None, fechado: bool = False,
+                      inicio_mes: bool = False) -> dict:
     """Só a análise (IA) — parte lenta, carregada à parte para o painel abrir rápido.
-    `fechado`: mês encerrado -> análise retrospectiva (ver analyst.run_analysis)."""
+    `fechado`: mês encerrado -> retrospectiva. `inicio_mes`: mês começando -> leitura leve."""
     ref_date = ref_date or end
     if data is None:
         data = collect_campaign_data(start, end)
-    a = analyst.run_analysis(_period_label(start, end), data, ref_date=ref_date, fechado=fechado)
+    a = analyst.run_analysis(_period_label(start, end), data, ref_date=ref_date,
+                             fechado=fechado, inicio_mes=inicio_mes)
     return {
         "resumo": a.resumo_executivo,
         "acoes": a.acoes_prioritarias,
@@ -91,12 +93,14 @@ def _brl(v: float) -> str:
 
 
 def build_report_analysis(start: date, end: date, ref_date: date | None = None,
-                          data: list[dict] | None = None, fechado: bool = False) -> dict:
+                          data: list[dict] | None = None, fechado: bool = False,
+                          inicio_mes: bool = False) -> dict:
     """Relatório formal (7 seções) para o PDF. Usa a IA quando há chave; se falhar
     ou não houver chave, monta uma versão estruturada pelo motor de regras (o PDF
     nunca fica sem análise). É persistido pela API (1x/dia), então todos veem o mesmo.
 
-    `fechado`: mês encerrado, gera relatório de fechamento (retrospectivo, sem projeção)."""
+    `fechado`: relatório de fechamento (retrospectivo). `inicio_mes`: leitura leve
+    do mês começando (sem alarme de teto)."""
     ref_date = ref_date or end
     if data is None:
         data = collect_campaign_data(start, end)
@@ -107,7 +111,8 @@ def build_report_analysis(start: date, end: date, ref_date: date | None = None,
 
     if config.ANTHROPIC_API_KEY:
         try:
-            return analyst_ai.build_report_analysis(period, data, budgets, fechado=fechado)
+            return analyst_ai.build_report_analysis(period, data, budgets,
+                                                    fechado=fechado, inicio_mes=inicio_mes)
         except Exception as exc:
             print(f"  aviso: relatório por IA falhou, usando motor próprio: {exc}")
     return _report_fallback(period, data, ref_date, st, fechado)

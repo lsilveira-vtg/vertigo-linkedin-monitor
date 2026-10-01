@@ -157,21 +157,37 @@ ANALYSIS_SCHEMA = {
 }
 
 
+# Modo "início de mês": poucos dias de dados -> leitura leve, sem alarme de teto.
+_MODO_INICIO = (
+    "MODO INÍCIO DE MÊS: o mês está COMEÇANDO (poucos dias de dados). NÃO alarme sobre o "
+    "teto (consumo baixo é natural no início) nem tire conclusões fortes (amostra pequena). "
+    "Trate os números como PARCIAIS e provisórios. Foque em: se as campanhas estão no ar e "
+    "no ritmo inicial de gasto/CPL; e lembre que o balanço completo do mês anterior está no "
+    "período anterior (basta trocar o mês no painel). Nas ações, priorize acompanhar e ajustar "
+    "o ritmo, não cortes definitivos."
+)
+
+
 def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None = None,
-            fechado: bool = False) -> Analysis:
+            fechado: bool = False, inicio_mes: bool = False) -> Analysis:
     """Análise por IA. Retorna um Analysis (mesma estrutura do motor próprio).
 
-    `fechado`: mês já encerrado -> escreve de forma RETROSPECTIVA (sem "agora"/
-    "imediatamente" nem projeção), com foco no aprendizado e no próximo ciclo."""
+    `fechado`: mês encerrado -> retrospectiva (sem projeção, foco em aprendizado).
+    `inicio_mes`: mês começando -> leitura leve, sem alarme de teto (ver _MODO_INICIO)."""
     import anthropic  # import tardio — só carrega se a camada for usada
 
     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
     payload = {"periodo": period_label, "campanhas": campaign_data, "orcamento_mensal": budgets or {}}
-    modo = ("\n\nATENÇÃO: este mês JÁ ENCERROU. Escreva de forma RETROSPECTIVA (o mês fechou): "
-            "relate o resultado consolidado e o que se aprendeu, SEM pedir ações 'imediatas'/'agora' "
-            "e SEM projeção de fim de mês. Nas ações prioritárias, foque no que aplicar no PRÓXIMO "
-            "ciclo (manter, replicar, cortar, testar). No resumo, na linha 'Leitura de orçamento', "
-            "relate o consumo FINAL do teto." if fechado else "")
+    if fechado:
+        modo = ("\n\nATENÇÃO: este mês JÁ ENCERROU. Escreva de forma RETROSPECTIVA (o mês fechou): "
+                "relate o resultado consolidado e o que se aprendeu, SEM pedir ações 'imediatas'/'agora' "
+                "e SEM projeção de fim de mês. Nas ações prioritárias, foque no que aplicar no PRÓXIMO "
+                "ciclo (manter, replicar, cortar, testar). No resumo, na linha 'Leitura de orçamento', "
+                "relate o consumo FINAL do teto.")
+    elif inicio_mes:
+        modo = "\n\n" + _MODO_INICIO
+    else:
+        modo = ""
     user_msg = (
         "Analise o desempenho destas campanhas de LinkedIn Ads e produza o feedback "
         f"no formato estruturado solicitado.{modo}\n\n"
@@ -293,21 +309,23 @@ _MODO_FECHAMENTO = (
 
 
 def build_report_analysis(period_label: str, campaign_data: list[dict],
-                          budgets: dict | None = None, fechado: bool = False) -> dict:
+                          budgets: dict | None = None, fechado: bool = False,
+                          inicio_mes: bool = False) -> dict:
     """Relatório formal por IA (7 seções). Exige ANTHROPIC_API_KEY (o chamador
     trata o fallback). Aplica o mesmo sanitizador de escrita das demais análises.
 
-    `fechado`: mês já encerrado, gera relatório de FECHAMENTO (retrospectivo, sem
-    projeção, voltado a aprendizados e ao próximo ciclo). Caso contrário, relatório
-    PARCIAL do mês em curso (operacional, com projeção e ajustes imediatos)."""
+    `fechado`: mês encerrado -> relatório de FECHAMENTO (retrospectivo, sem projeção).
+    `inicio_mes`: mês começando -> leitura leve, sem alarme de teto (ver _MODO_INICIO).
+    Caso contrário, relatório PARCIAL do mês em curso (com projeção e ajustes)."""
     import anthropic  # import tardio
 
     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
     payload = {"periodo": period_label, "campanhas": campaign_data, "orcamento": budgets or {}}
+    bloco = _MODO_FECHAMENTO if fechado else (_MODO_INICIO if inicio_mes else _MODO_PARCIAL)
     user_msg = (
         "Escreva o relatório formal de mídia paga do período no formato estruturado "
         "solicitado, seguindo todas as regras.\n\n"
-        f"{_MODO_FECHAMENTO if fechado else _MODO_PARCIAL}\n\n"
+        f"{bloco}\n\n"
         f"Dados:\n```json\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n```"
     )
 
