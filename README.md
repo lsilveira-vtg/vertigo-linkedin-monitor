@@ -130,7 +130,7 @@ Projeto migrado para o GitLab corporativo (origin) como fonte principal; GitHub 
 - **Fonte única do período** (`reports.period_for`): dashboard, planilha, Discord e e-mail usam a mesma regra; o mês corrente é ancorado em **hoje** (corrige o 1º dia do mês).
 - **Modo início de mês** (1ª semana): leitura leve, sem alarme de teto, com **paralelo ao mês anterior** e plano para o mês; atalho no painel para o fechamento anterior.
 - **Relatório em PDF robusto** (7 seções) com modos **parcial** e **fechamento**; **análise estável** (1x/dia, igual para todos) e **pré-geração** agendada.
-- **CPL consolidado** (histórico) no dashboard, planilha, PDF e Discord, ao lado do CPL do mês.
+- **CPL consolidado** (histórico) no dashboard, planilha, PDF e Discord, ao lado do CPL do mês. Na tabela de grupos, cada linha mostra também o **CPL histórico do próprio grupo** (sublinha "hist.") como referência frente ao CPL do mês.
 - **Planilha repaginada**: fechamentos por mês, aba "🔗 Anúncios" com link clicável, abas por campanha formatadas, feeds brutos ocultos; coluna "Invest rateado" para o Looker.
 - **vtg-link em produção**: relatórios semanal e mensal publicam a versão online em `link.vertigo.com.br` automaticamente (chave de sistema no GitLab).
 - **Acesso restrito** a `@vertigo.com.br` e **chat travado** ao escopo de mídia paga.

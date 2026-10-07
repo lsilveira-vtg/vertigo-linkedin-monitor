@@ -152,6 +152,7 @@
   .dot{width:9px;height:9px;border-radius:50%;flex:none}
   .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
   .t{font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-weak);padding:1px 6px;border-radius:5px;margin-left:2px}
+  .chist{font-size:10px;font-weight:500;color:var(--faint);margin-top:1px;white-space:nowrap}
   .analysis .body{font-size:13.5px} .act{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);font-size:13px}
   .act .n{width:20px;height:20px;border-radius:6px;background:var(--navy);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex:none}
   .chat{display:flex;flex-direction:column;min-height:440px}
@@ -301,6 +302,7 @@
         <h3>🧭 Como usar (passo a passo)</h3>
         <ol>
           <li>Comece pelos <b>KPIs</b> no topo e pelo alerta de orçamento.</li>
+          <li>Na coluna <b>CPL</b> da tabela aparecem <b>dois números</b>: o <b>CPL do mês</b> (destaque) e, abaixo, o <b>CPL histórico</b> do grupo (<i>hist.</i>) — a média de todo o período, como referência. É o mesmo raciocínio do card de <b>CPL</b> no topo (mês × consolidado).</li>
           <li>Use o seletor de <b>Período</b> no topo para ver o <b>mês atual</b> ou <b>meses anteriores</b>.</li>
           <li>Leia a <b>Análise &amp; recomendações do agente</b> (síntese + ações prioritárias).</li>
           <li>Em qualquer ação, clique <b>“✨ Gerar insights”</b> para o agente aprofundar no chat.</li>
@@ -337,6 +339,7 @@ function jwtPayload(t){
 const NA='<span class="na">n/d</span>';
 const DASH='<span class="na" title="Não se aplica a este grupo de anúncios">-</span>';
 const BRL0=n=>n==null?NA:"R$ "+Math.round(n).toLocaleString("pt-BR");
+const cplCell=c=>BRL0(c.cpl)+(c.cpl_hist!=null?`<div class="chist">hist. ${BRL0(c.cpl_hist)}</div>`:"");
 const BRL2=n=>n==null?NA:"R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
 const PCT=n=>n==null?NA:(n*100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";
 const HC={boa:"var(--good-l)",atencao:"var(--warn-l)",critica:"var(--crit-l)"};
@@ -588,7 +591,7 @@ function rows(){
     return `<tr><td><span class="cn"><span class="dot" style="background:${HC[c.saude]||'#888'}"></span>${c.nome}${traf?' <span class="t">TRÁFEGO</span>':''}</span></td>
       <td><span class="pill" style="background:var(--surface-2);color:var(--muted)">${ST[c.status]||c.status||NA}</span></td>
       <td class="num">${BRL0(c.investimento)}</td><td class="num">${traf?DASH:c.leads}</td>
-      <td class="num">${traf?DASH:BRL0(c.cpl)}</td><td class="num">${(c.impressoes||0).toLocaleString("pt-BR")}</td><td class="num">${(c.cliques||0).toLocaleString("pt-BR")}</td>
+      <td class="num">${traf?DASH:cplCell(c)}</td><td class="num">${(c.impressoes||0).toLocaleString("pt-BR")}</td><td class="num">${(c.cliques||0).toLocaleString("pt-BR")}</td>
       <td class="num">${traf?BRL2(c.cpc):DASH}</td><td class="num">${PCT(c.ctr)}</td></tr>`;
   }).join("")||'<tr><td colspan="9" style="text-align:center;color:var(--faint);padding:24px">Nenhum grupo de anúncios neste filtro.</td></tr>';
 }

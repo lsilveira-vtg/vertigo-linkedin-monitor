@@ -158,6 +158,43 @@ def cpl_consolidado(rateio_nomes: set | None = None, traf_nomes: set | None = No
     return round(inv_leads / leads, 2) if leads > 0 else None
 
 
+def cpl_consolidado_por_grupo(rateio_nomes: set | None = None, traf_nomes: set | None = None):
+    """CPL histórico (todo o período da aba 'Campanhas') QUEBRADO por grupo de
+    anúncios. Mesma regra do consolidado geral (rateio 50/50 e exclusão de
+    tráfego/branding), só que somando invest/leads por nome. Devolve {nome: cpl}
+    apenas para os grupos que tiveram lead no histórico."""
+    rateio_nomes = rateio_nomes or set()
+    traf_nomes = traf_nomes or set()
+    try:
+        from .sheets_client import open_sheet
+        linhas = open_sheet().worksheet("Campanhas").get_all_values()
+    except Exception as exc:
+        print(f"  aviso: CPL histórico por grupo indisponível: {exc}")
+        return {}
+    if len(linhas) < 2:
+        return {}
+    header = linhas[0]
+
+    def _idx(nome, pad):
+        try:
+            return header.index(nome)
+        except ValueError:
+            return pad
+    i_nome, i_inv, i_leads = _idx("Campanha", 1), _idx("Invest (R$)", 2), _idx("Leads", 3)
+    acc: dict[str, list] = {}       # nome -> [invest_rateado, leads]
+    for r in linhas[1:]:
+        if len(r) <= max(i_nome, i_inv, i_leads):
+            continue
+        nome = (r[i_nome] or "").strip()
+        if not nome or nome in traf_nomes:
+            continue
+        fator = RATEIO_FATOR if nome in rateio_nomes else 1.0
+        a = acc.setdefault(nome, [0.0, 0])
+        a[0] += _num(r[i_inv]) * fator
+        a[1] += int(_num(r[i_leads]))
+    return {nome: round(inv / leads, 2) for nome, (inv, leads) in acc.items() if leads > 0}
+
+
 def build_report_analysis(start: date, end: date, ref_date: date | None = None,
                           data: list[dict] | None = None, fechado: bool = False,
                           inicio_mes: bool = False) -> dict:
@@ -251,6 +288,7 @@ def build_dashboard_data(start: date, end: date, ref_date: date | None = None,
     rateio_nomes = {c["nome"] for c in data if c.get("rateio_5050")}
     traf_nomes = {c["nome"] for c in data if c.get("tipo", "leads") in ("trafego", "branding")}
     cpl_consol = cpl_consolidado(rateio_nomes, traf_nomes)
+    cpl_hist_grupo = cpl_consolidado_por_grupo(rateio_nomes, traf_nomes)
 
     st = budget.account_status(total_invest, ref_date)
 
@@ -267,6 +305,7 @@ def build_dashboard_data(start: date, end: date, ref_date: date | None = None,
             "investimento": round(c.get("investimento_brl", 0) or 0, 2),
             "leads": None if traf else (c.get("leads", 0) or 0),
             "cpl": c.get("cpl_brl") if not traf else None,
+            "cpl_hist": None if traf else cpl_hist_grupo.get(c["nome"]),
             "impressoes": c.get("impressoes", 0) or 0,
             "cliques": clk,
             "cpc": round(c["investimento_brl"] / clk, 2) if (traf and clk) else None,
