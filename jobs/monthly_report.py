@@ -1,8 +1,8 @@
 """Job mensal (1o dia util): fecha o mes anterior e envia o relatorio.
 
 Congela o relatorio de FECHAMENTO robusto (7 secoes) e usa esse MESMO documento
-no e-mail, garantindo que o e-mail e o PDF do painel sejam identicos (single source
-of truth). O relatorio completo fica disponivel em /report?month=AAAA-MM."""
+no e-mail (single source of truth). Publica tambem a pagina online no vtg-link e
+compartilha com o time (igual ao semanal); se falhar, linka o painel (/report)."""
 import os
 import sys
 from datetime import date, timedelta
@@ -58,9 +58,27 @@ def main() -> None:
     except Exception as exc:
         print(f"  aviso: não pré-gerei o card do mês fechado: {exc}")
 
-    # Link para o relatório completo (mesma fonte congelada), requer login Vertigo.
-    body += (f"\n\n---\nRelatório completo (requer login Vertigo): "
-             f"{config.PUBLIC_BASE_URL}/report?month={month_str}")
+    # Publica a página online no vtg-link e compartilha com o time (igual ao semanal).
+    # Nunca interrompe o report: se o vtg-link falhar, cai no link do painel (/report).
+    link = None
+    if config.REPORT_RECIPIENTS:
+        try:
+            data = collect_campaign_data(start, end)
+            analysis = analyst.run_analysis(period, data, ref_date=end, fechado=True)
+            from src import report_html, vtglink
+            html = report_html.build_html_report(period, data, analysis, ref_date=end)
+            fname = f"report-mensal-{month_str}.html"
+            pagina = vtglink.publicar_e_compartilhar(
+                html, fname, f"Vertigo · Report Mensal LinkedIn | {period}", config.REPORT_RECIPIENTS)
+            link = pagina.get("url")
+        except Exception as exc:
+            print(f"  aviso: não publiquei no vtg-link: {exc}")
+
+    if link:
+        body += f"\n\n---\nVer online (requer login Vertigo): {link}"
+    else:
+        body += (f"\n\n---\nRelatório completo (requer login Vertigo): "
+                 f"{config.PUBLIC_BASE_URL}/report?month={month_str}")
 
     mailer.send_email(subject=f"Vertigo | Report Mensal LinkedIn | {period}", body=body)
     print(f"Report mensal {period} enviado.")
