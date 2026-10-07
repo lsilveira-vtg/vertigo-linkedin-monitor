@@ -159,14 +159,17 @@ ANALYSIS_SCHEMA = {
 
 # Modo "início de mês": poucos dias de dados -> leitura leve + paralelo com o mês anterior.
 _MODO_INICIO = (
-    "MODO INÍCIO DE MÊS: o mês está COMEÇANDO (poucos dias de dados), então os números do "
-    "período atual são PARCIAIS. NÃO alarme sobre o teto (consumo baixo é natural agora) nem "
-    "tire conclusões fortes do mês atual. Em vez disso, use o campo 'mes_anterior' (resultado "
-    "do mês passado) para: (1) fazer um PARALELO, o que funcionou e o que não funcionou no mês "
-    "anterior (melhores e piores grupos por CPL, consumo do teto); e (2) PROJETAR um plano para "
-    "ESTE mês, onde concentrar verba, o que replicar, o que evitar e qual teto respeitar. Deixe "
-    "claro que é um plano inicial baseado no histórico, a confirmar conforme os dados do mês "
-    "chegarem. Nas ações prioritárias, foque nesse plano e no acompanhamento do ritmo."
+    "MODO INÍCIO DE MÊS: o mês está COMEÇANDO (poucos dias de dados), então os números do período "
+    "atual são PARCIAIS. O resumo_executivo DEVE ABRIR com 1 ou 2 frases AMIGÁVEIS e EXPLICATIVAS, "
+    "em tom acolhedor e tranquilo (nunca técnico ou seco), deixando claro que ESTAMOS NA PRIMEIRA "
+    "SEMANA do mês, que ainda há poucos dados para conclusões firmes, e que por isso a leitura se "
+    "apoia no mês anterior para orientar o começo deste. Só DEPOIS dessa abertura entre nos dados. "
+    "NÃO alarme sobre o teto (consumo baixo é natural agora) nem tire conclusões fortes do mês "
+    "atual. Use o campo 'mes_anterior' (resultado do mês passado) para: (1) fazer um PARALELO, o "
+    "que funcionou e o que não funcionou (melhores e piores grupos por CPL, consumo do teto); e "
+    "(2) PROJETAR um plano para ESTE mês, onde concentrar verba, o que replicar, o que evitar e "
+    "qual teto respeitar, deixando claro que é um plano inicial a confirmar conforme os dados "
+    "chegarem. Nas ações, foque nesse plano e no acompanhamento do ritmo, com um tom orientador."
 )
 
 
