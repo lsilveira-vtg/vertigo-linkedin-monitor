@@ -68,8 +68,13 @@ def _save(key: str, payload: dict, cache: dict | None) -> None:
 # Versão da chave do card. Bump invalida os snapshots antigos (ex.: os gerados
 # antes do rateio 50/50 e do modo retrospectivo de mês fechado), forçando 1
 # regeneração com a lógica atual. Não afeta o relatório (chaves RPT-...).
-_CARD_VER = "6"
-_RPT_VER = "4"     # versão da chave do relatório do mês corrente (bump = regenera hoje)
+_CARD_VER = "7"
+_RPT_VER = "5"     # versão da chave do relatório do mês corrente (bump = regenera hoje)
+
+# Até que dia (do período, = ontem) vale o "modo início de mês". A primeira semana
+# cheia tem poucos dados, então a leitura se apoia no mês anterior + cenários. A
+# partir daí (~dia 8/9) já há dados suficientes para focar no mês vigente.
+_INICIO_MES_ATE_DIA = 8
 
 
 def load_or_build_card(month: str | None = None, data: list | None = None,
@@ -85,7 +90,7 @@ def load_or_build_card(month: str | None = None, data: list | None = None,
         if got:
             return got
     start, end = period_for(month)
-    inicio_mes = (not fechado) and end.day <= 7      # primeira semana do mês corrente
+    inicio_mes = (not fechado) and end.day <= _INICIO_MES_ATE_DIA   # ~1ª semana do mês corrente
     if data is None:
         data = collect_campaign_data(start, end)
     analise = dashboard_data.build_analysis_ia(start, end, ref_date=end, data=data,
@@ -109,7 +114,7 @@ def load_or_build_report(month: str | None = None, data: list | None = None,
         if got:
             return got
     start, end = period_for(month)
-    inicio_mes = (not fechado) and end.day <= 7      # primeira semana do mês corrente
+    inicio_mes = (not fechado) and end.day <= _INICIO_MES_ATE_DIA   # ~1ª semana do mês corrente
     if data is None:
         data = collect_campaign_data(start, end)
     rel = dashboard_data.build_report_analysis(start, end, ref_date=end, data=data,

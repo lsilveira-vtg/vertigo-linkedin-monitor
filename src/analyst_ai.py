@@ -159,17 +159,21 @@ ANALYSIS_SCHEMA = {
 
 # Modo "início de mês": poucos dias de dados -> leitura leve + paralelo com o mês anterior.
 _MODO_INICIO = (
-    "MODO INÍCIO DE MÊS: o mês está COMEÇANDO (poucos dias de dados), então os números do período "
-    "atual são PARCIAIS. O resumo_executivo DEVE ABRIR com 1 ou 2 frases AMIGÁVEIS e EXPLICATIVAS, "
-    "em tom acolhedor e tranquilo (nunca técnico ou seco), deixando claro que ESTAMOS NA PRIMEIRA "
-    "SEMANA do mês, que ainda há poucos dados para conclusões firmes, e que por isso a leitura se "
-    "apoia no mês anterior para orientar o começo deste. Só DEPOIS dessa abertura entre nos dados. "
-    "NÃO alarme sobre o teto (consumo baixo é natural agora) nem tire conclusões fortes do mês "
-    "atual. Use o campo 'mes_anterior' (resultado do mês passado) para: (1) fazer um PARALELO, o "
-    "que funcionou e o que não funcionou (melhores e piores grupos por CPL, consumo do teto); e "
-    "(2) PROJETAR um plano para ESTE mês, onde concentrar verba, o que replicar, o que evitar e "
-    "qual teto respeitar, deixando claro que é um plano inicial a confirmar conforme os dados "
-    "chegarem. Nas ações, foque nesse plano e no acompanhamento do ritmo, com um tom orientador."
+    "MODO INÍCIO DE MÊS: o mês está COMEÇANDO (primeira semana, poucos dias de dados), então os "
+    "números do período atual são PARCIAIS e ainda NÃO sustentam conclusões firmes sobre o mês. "
+    "ABRA o texto (o 'contexto' e o 'resumo_executivo') com um tom AMIGÁVEL e EXPLICATIVO, acolhedor "
+    "e tranquilo (nunca seco), deixando claro em 1-2 frases que ESTAMOS NA PRIMEIRA SEMANA, que é "
+    "cedo para julgar o mês, e que por isso a leitura se apoia FORTEMENTE no mês anterior (campo "
+    "'mes_anterior') para orientar o começo. NÃO alarme sobre o teto (consumo baixo é natural agora). "
+    "Entregue uma análise de VERDADE, não superficial, em três movimentos bem desenvolvidos: "
+    "(1) RETROSPECTO do mês anterior: o que funcionou e o que não funcionou (melhores e piores grupos "
+    "por CPL, consumo do teto, principais aprendizados), citando números e nomes; "
+    "(2) CENÁRIOS para ESTE mês, projetados a partir do histórico, com números aproximados: um cenário "
+    "de MANTER o ritmo e o mix atuais (onde o mês tende a chegar em leads, CPL e consumo do teto) e um "
+    "cenário MELHOR, concentrando a verba nos grupos que converteram bem no mês anterior; deixe "
+    "EXPLÍCITO que são projeções a confirmar conforme os dados do mês chegarem; "
+    "(3) PLANO inicial: onde concentrar verba, o que replicar, o que evitar e qual teto respeitar. "
+    "Nas ações, foque nesse plano e no acompanhamento do ritmo nos próximos dias, com tom orientador."
 )
 
 
@@ -203,7 +207,7 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
 
     with client.messages.stream(
         model=config.ANALYST_MODEL,
-        max_tokens=8000,
+        max_tokens=12000,
         system=SYSTEM_PROMPT,
         thinking={"type": "adaptive"},
         output_config={"format": {"type": "json_schema", "schema": ANALYSIS_SCHEMA}},
@@ -338,9 +342,11 @@ def build_report_analysis(period_label: str, campaign_data: list[dict],
         f"Dados:\n```json\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n```"
     )
 
+    # 16000 (e não 8000): as 7 seções + adaptive thinking podem passar de 8k e TRUNCAR o
+    # JSON, o que quebra o json.loads e derruba tudo no motor de regras (fallback pobre).
     with client.messages.stream(
         model=config.ANALYST_MODEL,
-        max_tokens=8000,
+        max_tokens=16000,
         system=REPORT_SYSTEM,
         thinking={"type": "adaptive"},
         output_config={"format": {"type": "json_schema", "schema": REPORT_SCHEMA}},
@@ -348,7 +354,11 @@ def build_report_analysis(period_label: str, campaign_data: list[dict],
     ) as stream:
         response = stream.get_final_message()
 
-    data = json.loads(next(b.text for b in response.content if b.type == "text"))
+    txt = next((b.text for b in response.content if b.type == "text"), "")
+    if getattr(response, "stop_reason", "") == "max_tokens":
+        # saída cortada: avisa para o chamador cair no fallback de forma controlada
+        raise ValueError("relatório truncado (max_tokens) — JSON incompleto")
+    data = json.loads(txt)
     try:
         from . import ai_costs
         ai_costs.log_and_summarize(response.usage, config.ANALYST_MODEL)

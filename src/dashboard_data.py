@@ -211,21 +211,23 @@ def build_report_analysis(start: date, end: date, ref_date: date | None = None,
     total_invest = sum(c.get("investimento_brl", 0) or 0 for c in data)
     st = budget.account_status(total_invest, ref_date)
     budgets = {"gasto": st["gasto"], "teto": st["teto"], "consumo": st["consumo"], "mes": st["mes"]}
+    prev = _resumo_mes_anterior(start) if inicio_mes else None
 
     if config.ANTHROPIC_API_KEY:
         try:
-            prev = _resumo_mes_anterior(start) if inicio_mes else None
             return analyst_ai.build_report_analysis(period, data, budgets, fechado=fechado,
                                                     inicio_mes=inicio_mes, mes_anterior=prev)
         except Exception as exc:
             print(f"  aviso: relatório por IA falhou, usando motor próprio: {exc}")
-    return _report_fallback(period, data, ref_date, st, fechado)
+    return _report_fallback(period, data, ref_date, st, fechado, inicio_mes, prev)
 
 
 def _report_fallback(period: str, data: list[dict], ref_date: date, st: dict,
-                     fechado: bool = False) -> dict:
+                     fechado: bool = False, inicio_mes: bool = False,
+                     mes_anterior: dict | None = None) -> dict:
     """Relatório estruturado sem IA (motor de regras) — rede de segurança."""
     a = analyst.analyze(period, data, ref_date=ref_date)
+    resumo = a.resumo_executivo
     consumo = st.get("consumo")
     consumo_txt = f"{round(consumo * 100)}%" if consumo is not None else "n/d"
     if fechado:
@@ -239,6 +241,34 @@ def _report_fallback(period: str, data: list[dict], ref_date: date, st: dict,
             "Aplicar no próximo mês os aprendizados dos grupos de melhor CPL.",
             "Rever verba dos grupos de baixo retorno antes de repetir a estratégia.",
             "Testar novos criativos/segmentação nos grupos com bom alcance e pouca conversão.",
+        ]
+    elif inicio_mes:
+        ma = mes_anterior or {}
+        prev_cpl = ma.get("cpl_geral")
+        prev_leads = ma.get("leads")
+        prev_periodo = ma.get("periodo", "o mês anterior")
+        ref = (f" No mês anterior ({prev_periodo}) foram {prev_leads} leads a um CPL geral de "
+               f"{_brl(prev_cpl)}." if prev_cpl else "")
+        contexto = (f"Relatório de início de mês do período {period}. Estamos na primeira semana, "
+                    "então os números ainda são parciais e servem mais para calibrar o ritmo do que "
+                    "para concluir sobre o mês. A leitura abaixo se apoia no desempenho do mês "
+                    f"anterior.{ref} Leads referem-se a formulários do LinkedIn; a qualificação (MQL) "
+                    "vem do CRM e pode divergir.")
+        resumo = ("Mês começando: nos primeiros dias foram "
+                  f"{_brl(st.get('gasto', 0))} investidos (consumo de {consumo_txt} do teto de "
+                  f"{_brl(st.get('teto', 0))}), volume ainda baixo e esperado para o início. "
+                  "Como há poucos dados, a referência é o mês anterior"
+                  + (f", que fechou com CPL geral de {_brl(prev_cpl)}" if prev_cpl else "")
+                  + ". O plano para este mês é concentrar a verba nos grupos de menor CPL de leads "
+                  "qualificados, replicar o que funcionou e revisar os grupos de baixo retorno antes "
+                  "de escalar. As projeções do mês devem ser confirmadas conforme os dados chegarem.")
+        orc = (f"Consumo de {consumo_txt} do teto do mês ({_brl(st.get('gasto', 0))} de "
+               f"{_brl(st.get('teto', 0))}), ritmo natural para o início do mês. A campanha Liferay "
+               "entra rateada em 50/50 (a Vertigo banca metade).")
+        passos = [
+            "Acompanhar o ritmo de gasto nos próximos dias antes de ajustar a verba.",
+            "Concentrar a verba nos grupos de menor CPL de leads qualificados.",
+            "Replicar o que funcionou no mês anterior e revisar os grupos de baixo retorno.",
         ]
     else:
         contexto = (f"Relatório parcial do período {period} (mês em curso). Foram acompanhados "
@@ -254,7 +284,7 @@ def _report_fallback(period: str, data: list[dict], ref_date: date, st: dict,
         ]
     return {
         "contexto": contexto,
-        "resumo_executivo": a.resumo_executivo,
+        "resumo_executivo": resumo,
         "orcamento_ritmo": orc,
         "por_grupo": [
             {"nome": c.nome, "saude": c.saude,
