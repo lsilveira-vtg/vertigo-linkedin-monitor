@@ -158,7 +158,19 @@ ANALYSIS_SCHEMA = {
 
 
 # Modo "início de mês": poucos dias de dados -> leitura leve + paralelo com o mês anterior.
-_MODO_INICIO = (
+# Duas versões: CARD (painel, conciso) e REPORT (PDF, com cenários projetados).
+_MODO_INICIO_CARD = (
+    "MODO INÍCIO DE MÊS: o mês está COMEÇANDO (primeira semana, poucos dias de dados), então os "
+    "números atuais são PARCIAIS. ABRA o 'resumo_executivo' com 1-2 frases AMIGÁVEIS e EXPLICATIVAS, "
+    "em tom acolhedor e tranquilo (nunca seco), deixando claro que estamos na PRIMEIRA SEMANA e que é "
+    "cedo para concluir, então a leitura se apoia no mês anterior. NÃO alarme sobre o teto (consumo "
+    "baixo é natural agora). Em seguida, de forma CONCISA (isto é um card de painel, não um relatório): "
+    "faça um breve PARALELO com o mês anterior (campo 'mes_anterior': melhores e piores grupos por CPL "
+    "e consumo do teto) e aponte um PLANO inicial para este mês (onde concentrar verba, o que replicar, "
+    "o que evitar), deixando claro que é um plano a confirmar conforme os dados chegarem. Nas ações, "
+    "foque nesse plano e no acompanhamento do ritmo. Seja objetivo: nada de parágrafos longos no card."
+)
+_MODO_INICIO_REPORT = (
     "MODO INÍCIO DE MÊS: o mês está COMEÇANDO (primeira semana, poucos dias de dados), então os "
     "números do período atual são PARCIAIS e ainda NÃO sustentam conclusões firmes sobre o mês. "
     "ABRA o texto (o 'contexto' e o 'resumo_executivo') com um tom AMIGÁVEL e EXPLICATIVO, acolhedor "
@@ -196,7 +208,7 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
                 "ciclo (manter, replicar, cortar, testar). No resumo, na linha 'Leitura de orçamento', "
                 "relate o consumo FINAL do teto.")
     elif inicio_mes:
-        modo = "\n\n" + _MODO_INICIO
+        modo = "\n\n" + _MODO_INICIO_CARD
     else:
         modo = ""
     user_msg = (
@@ -334,7 +346,7 @@ def build_report_analysis(period_label: str, campaign_data: list[dict],
     payload = {"periodo": period_label, "campanhas": campaign_data, "orcamento": budgets or {}}
     if mes_anterior:
         payload["mes_anterior"] = mes_anterior
-    bloco = _MODO_FECHAMENTO if fechado else (_MODO_INICIO if inicio_mes else _MODO_PARCIAL)
+    bloco = _MODO_FECHAMENTO if fechado else (_MODO_INICIO_REPORT if inicio_mes else _MODO_PARCIAL)
     user_msg = (
         "Escreva o relatório formal de mídia paga do período no formato estruturado "
         "solicitado, seguindo todas as regras.\n\n"

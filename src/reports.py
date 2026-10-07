@@ -68,8 +68,8 @@ def _save(key: str, payload: dict, cache: dict | None) -> None:
 # Versão da chave do card. Bump invalida os snapshots antigos (ex.: os gerados
 # antes do rateio 50/50 e do modo retrospectivo de mês fechado), forçando 1
 # regeneração com a lógica atual. Não afeta o relatório (chaves RPT-...).
-_CARD_VER = "7"
-_RPT_VER = "5"     # versão da chave do relatório do mês corrente (bump = regenera hoje)
+_CARD_VER = "8"
+_RPT_VER = "6"     # versão da chave do relatório do mês corrente (bump = regenera hoje)
 
 # Até que dia (do período, = ontem) vale o "modo início de mês". A primeira semana
 # cheia tem poucos dados, então a leitura se apoia no mês anterior + cenários. A
