@@ -103,7 +103,7 @@ def load_or_build_report(month: str | None = None, data: list | None = None,
     fechado = mk != current_month()
     # Mês corrente versionado (_RPT_VER): bump invalida o relatório de hoje quando a
     # lógica muda (ex.: correção do período). Mês passado = fixo (fechamento imutável).
-    key = ("RPT-M" + mk) if fechado else (f"RPT{_RPT_VER}-" + datetime.now(BRT).date().isoformat())
+    key = (f"RPT{_RPT_VER}-M" + mk) if fechado else (f"RPT{_RPT_VER}-" + datetime.now(BRT).date().isoformat())
     if not force:
         got = _get_stored(key, cache)
         if got:
