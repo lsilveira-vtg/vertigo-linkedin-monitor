@@ -16,12 +16,12 @@ BRT = timezone(timedelta(hours=-3))
 TAB = "Custos IA"
 HEADER = ["Data", "Mês", "Modelo", "Tokens entrada", "Tokens saída", "Custo (US$)"]
 
-# Preço por 1M de tokens (Claude Opus 4.8). Ajustar se mudar de modelo.
+# Preço por 1M de tokens (Claude Sonnet 5.5). Ajustar se mudar de modelo (ANALYST_MODEL).
 PRICE_PER_MTOK = {
-    "input": 5.0,
-    "output": 25.0,
-    "cache_read": 0.5,
-    "cache_write": 6.25,
+    "input": 2.0,
+    "output": 10.0,
+    "cache_read": 0.20,
+    "cache_write": 2.5,
 }
 
 

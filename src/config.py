@@ -35,7 +35,7 @@ DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 
 # Anthropic (camada de análise por IA — opcional; sem chave usa o motor próprio)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-ANALYST_MODEL = os.getenv("ANALYST_MODEL", "claude-opus-4-8")
+ANALYST_MODEL = os.getenv("ANALYST_MODEL", "claude-sonnet-5-5")
 # Orçamento mensal de referência da chave (USD) — usado no contador de custo
 ANTHROPIC_MONTHLY_BUDGET_USD = float(os.getenv("ANTHROPIC_MONTHLY_BUDGET_USD", "5"))
 
