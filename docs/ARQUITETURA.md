@@ -5,7 +5,21 @@ para o time de marketing) e **como ele foi construído** (visão técnica, para 
 mexe no código). Mantido junto ao código, em `docs/`.
 
 > Repositório: `git@gitlab.vertigo-devops.com:Silveira/vertigo-linkedin-monitor.git`
-> Painel ao vivo: `https://midiapaga-api.vtgdev.net` (acesso restrito a contas `@vertigo.com.br`).
+> 🟢 **Em produção:** `https://midiapaga-api.vtgdev.net` (login `@vertigo.com.br`). É o ambiente oficial e único — não há "ambiente de testes" separado, então todo push na `main` entra em produção (deploy automático).
+
+---
+
+## Novidades recentes (set–out/2026)
+
+- **Em produção**, com o painel como interface oficial do time.
+- **Fonte única do período** (`reports.period_for`): dashboard, planilha, Discord e e-mail mostram sempre os MESMOS números; o mês corrente é ancorado em **hoje** (corrige a virada do mês).
+- **Modo início de mês** (1ª semana): leitura leve, sem alarme de teto, com **paralelo ao mês anterior** e plano para o mês; atalho no painel para o fechamento anterior.
+- **Relatório em PDF robusto** (7 seções) com modos **parcial** / **fechamento**; análise estável (1x/dia) e pré-gerada.
+- **CPL consolidado** (histórico) ao lado do CPL do mês, em todas as superfícies.
+- **Rateio 50/50 da Liferay** e **tetos mensais** aplicados em tudo; CPL geral só de campanhas de lead.
+- **Planilha repaginada**: fechamentos por mês, aba "🔗 Anúncios" com link clicável, abas por campanha formatadas, feeds brutos ocultos; coluna "Invest rateado" para o Looker.
+- **vtg-link em produção**: relatórios semanal e mensal publicam a versão online em `link.vertigo.com.br` automaticamente.
+- **Chat** com memória da conversa e ciente do período selecionado; **escopo travado** só em mídia paga.
 
 ---
 

@@ -2,8 +2,9 @@
 
 Agente automatizado de monitoramento de mídia paga no LinkedIn da Vertigo. Coleta dados de campanhas, analisa performance, recomenda ações mediante aprovação, e envia reports semanal e mensal por e-mail.
 
-> 📖 **Documentação completa (funcionalidades + lógica de análise e relatórios):** [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
-> Painel ao vivo: `https://midiapaga-api.vtgdev.net` (acesso restrito a `@vertigo.com.br`). O dashboard evoluiu de Looker Studio para um **painel web próprio** (ver a documentação). O log abaixo mantém o histórico das primeiras etapas.
+> 🟢 **EM PRODUÇÃO.** Painel oficial: **https://midiapaga-api.vtgdev.net** (login `@vertigo.com.br`). Esse é o ambiente de produção final (não há ambiente de testes separado — todo push na `main` entra em produção). Relatórios semanal e mensal saem por e-mail e publicam versão online no vtg-link (`link.vertigo.com.br`).
+>
+> 📖 **Documentação completa (funcionalidades + lógica de análise e relatórios):** [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md). O dashboard evoluiu de Looker Studio para um **painel web próprio** (ver a documentação). O log abaixo mantém o histórico das etapas.
 
 ---
 
@@ -123,6 +124,17 @@ Projeto migrado para o GitLab corporativo (origin) como fonte principal; GitHub 
 - **Deploy automático** a cada push na `main` (SSH na EC2 + `docker compose`).
 - **Documentação** completa em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 
+### ✅ Etapa 13 — Produção, consistência e inteligência de período (set–out/2026)
+- **Em produção**: confirmado que `midiapaga-api.vtgdev.net` é o ambiente **oficial e único** (não há "testes" separado).
+- **Revisão de 10 pontos (Julia/Vitor)**: e-mail semanal com acumulado do mês, "grupo de anúncios" na nomenclatura, **rateio 50/50 da Liferay**, teto por grupo, **tetos mensais**, coluna de impressões, **chat com memória**, princípio do CPL qualificado.
+- **Fonte única do período** (`reports.period_for`): dashboard, planilha, Discord e e-mail usam a mesma regra; o mês corrente é ancorado em **hoje** (corrige o 1º dia do mês).
+- **Modo início de mês** (1ª semana): leitura leve, sem alarme de teto, com **paralelo ao mês anterior** e plano para o mês; atalho no painel para o fechamento anterior.
+- **Relatório em PDF robusto** (7 seções) com modos **parcial** e **fechamento**; **análise estável** (1x/dia, igual para todos) e **pré-geração** agendada.
+- **CPL consolidado** (histórico) no dashboard, planilha, PDF e Discord, ao lado do CPL do mês.
+- **Planilha repaginada**: fechamentos por mês, aba "🔗 Anúncios" com link clicável, abas por campanha formatadas, feeds brutos ocultos; coluna "Invest rateado" para o Looker.
+- **vtg-link em produção**: relatórios semanal e mensal publicam a versão online em `link.vertigo.com.br` automaticamente (chave de sistema no GitLab).
+- **Acesso restrito** a `@vertigo.com.br` e **chat travado** ao escopo de mídia paga.
+
 ---
 
 ## Próximas etapas
@@ -145,6 +157,10 @@ Projeto migrado para o GitLab corporativo (origin) como fonte principal; GitHub 
 - [x] **Painel web** com KPIs, gráficos, chat ao vivo e relatório em PDF (`midiapaga-api.vtgdev.net`)
 - [x] Ajustes de negócio: terminologia "grupo de anúncios", rateio 50/50 Liferay, tetos por mês, impressões
 - [x] Documentar e entregar (ver [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md))
+- [x] **Entrar em produção** (painel oficial `midiapaga-api.vtgdev.net`)
+- [x] Revisão de 10 pontos (Julia/Vitor): rateio 50/50, tetos mensais, chat com memória, impressões etc.
+- [x] Consistência entre superfícies (período único) + modo início de mês + CPL consolidado
+- [x] Relatórios publicando a versão online no **vtg-link de produção** (`link.vertigo.com.br`)
 
 ### Fases futuras (não priorizadas)
 - [ ] **Execução automática** de ações (pausar / ajustar budget) — exige token `rw_ads` e fluxo de aprovadores. **Por decisão, o agente é consultivo (só recomenda)**; execução fica para uma fase futura, se o time quiser.
