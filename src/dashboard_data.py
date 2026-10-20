@@ -71,14 +71,14 @@ def _period_label(start: date, end: date) -> str:
     return f"{start.strftime('%d/%m')} a {end.strftime('%d/%m/%Y')}"
 
 
-def _resumo_mes_anterior(start: date) -> dict | None:
-    """Resumo compacto do mês ANTERIOR ao `start` (para o paralelo de início de mês)."""
-    prev_end = start - timedelta(days=1)
-    prev_start = prev_end.replace(day=1)
+def _resumo_periodo(p_start: date, p_end: date, data: list[dict] | None = None) -> dict | None:
+    """Resumo compacto de QUALQUER período (paralelo de início de mês e comparações
+    no chat). Inclui números por grupo (com engajamento) para responder perguntas
+    tipo 'CPL/CTR do grupo X no mês passado'."""
     try:
-        data = collect_campaign_data(prev_start, prev_end)
+        data = data if data is not None else collect_campaign_data(p_start, p_end)
     except Exception as exc:
-        print(f"  aviso: não li o mês anterior: {exc}")
+        print(f"  aviso: não li o período {p_start}..{p_end}: {exc}")
         return None
     if not data:
         return None
@@ -86,9 +86,9 @@ def _resumo_mes_anterior(start: date) -> dict | None:
     lead_camps = [c for c in data if c.get("tipo", "leads") not in ("trafego", "branding")]
     inv_leads = sum(c.get("investimento_brl", 0) or 0 for c in lead_camps)
     leads = sum(c.get("leads", 0) or 0 for c in lead_camps)
-    st = budget.account_status(total, prev_end)
+    st = budget.account_status(total, p_end)
     return {
-        "periodo": _period_label(prev_start, prev_end),
+        "periodo": _period_label(p_start, p_end),
         "investimento": round(total, 2),
         "leads": leads,
         "cpl_geral": round(inv_leads / leads, 2) if leads else None,
@@ -96,8 +96,36 @@ def _resumo_mes_anterior(start: date) -> dict | None:
         "teto": st.get("teto"),
         "grupos": [{"nome": c["nome"], "tipo": c.get("tipo", "leads"),
                     "invest": round(c.get("investimento_brl", 0) or 0, 2),
-                    "leads": c.get("leads", 0) or 0, "cpl": c.get("cpl_brl")} for c in data],
+                    "leads": c.get("leads", 0) or 0, "cpl": c.get("cpl_brl"),
+                    "impressoes": c.get("impressoes", 0) or 0,
+                    "cliques": c.get("cliques", 0) or 0, "ctr": c.get("ctr")} for c in data],
     }
+
+
+def _resumo_mes_anterior(start: date) -> dict | None:
+    """Resumo compacto do mês ANTERIOR ao `start` (para o paralelo de início de mês)."""
+    prev_end = start - timedelta(days=1)
+    return _resumo_periodo(prev_end.replace(day=1), prev_end)
+
+
+def historico_para_chat(start: date, end: date, n_meses: int = 2) -> dict:
+    """Histórico compacto para o chat COMPARAR meses sem o usuário trocar o seletor:
+    resumos dos últimos `n_meses` meses cheios + o MESMO intervalo de dias do mês
+    anterior (ex.: 01-19/set para comparar com 01-19/out). Cada chamada bate na API
+    do LinkedIn, então o chamador (API) deve cachear — meses passados são imutáveis."""
+    meses: list[dict] = []
+    m_end = start - timedelta(days=1)
+    for _ in range(max(1, n_meses)):
+        m_start = m_end.replace(day=1)
+        r = _resumo_periodo(m_start, m_end)
+        if r:
+            meses.append(r)
+        m_end = m_start - timedelta(days=1)       # recua para o mês anterior
+    # mesmo intervalo de dias no mês anterior (comparação "mesmo período")
+    prev_first = (start.replace(day=1) - timedelta(days=1)).replace(day=1)
+    last_prev = calendar.monthrange(prev_first.year, prev_first.month)[1]
+    sp = _resumo_periodo(prev_first, date(prev_first.year, prev_first.month, min(end.day, last_prev)))
+    return {"meses": meses, "mesmo_periodo_mes_anterior": sp}
 
 
 def build_analysis_ia(start: date, end: date, ref_date: date | None = None,

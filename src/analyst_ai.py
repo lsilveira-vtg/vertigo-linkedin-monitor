@@ -430,16 +430,23 @@ ASK_SYSTEM = SYSTEM_PROMPT + (
     "com base nos dados fornecidos; se os dados não bastarem, diga isso. Não invente números.\n"
     "PERÍODO: os dados trazem um campo 'periodo'. O usuário pode ter selecionado um MÊS ANTERIOR no "
     "painel, então responda sempre sobre o PERÍODO informado nos dados, sem presumir que é o mês "
-    "corrente. Se um mês já terminou, fale de forma retrospectiva (o que aconteceu / o que aprender). "
-    "Se perguntarem de outro mês que não está nos dados, diga que basta selecionar aquele mês no "
-    "seletor de Período do painel para você analisá-lo.\n"
+    "corrente. Se um mês já terminou, fale de forma retrospectiva (o que aconteceu / o que aprender).\n"
+    "COMPARAÇÃO COM OUTROS MESES: os dados podem trazer um campo 'historico' com resumos compactos "
+    "dos meses anteriores — 'meses' (últimos meses CHEIOS, com total, leads, CPL geral, consumo do "
+    "teto e números por grupo, incluindo CTR/cliques) e 'mesmo_periodo_mes_anterior' (o MESMO "
+    "intervalo de dias do mês anterior, ex.: 01-19, para comparação justa com um mês em curso). "
+    "Quando pedirem comparação com o mês anterior ou com 'o mesmo período do mês passado', USE esses "
+    "resumos para comparar CPL, leads, CTR, investimento e consumo do teto, deixando claro o que é "
+    "mês cheio e o que é mesmo período parcial. Só diga para selecionar outro mês no seletor de "
+    "Período do painel se pedirem um mês que NÃO esteja no 'historico'.\n"
     "Use o HISTÓRICO da conversa (mensagens anteriores) para entender perguntas de acompanhamento "
     "(ex.: 'e o outro grupo?', 'por quê?', 'e se eu cortar esse?') sem pedir para repetir o contexto."
 )
 
 
 def answer_question(question: str, campaign_data: list[dict], budgets: dict | None = None,
-                    history: list[dict] | None = None, periodo: str | None = None) -> str:
+                    history: list[dict] | None = None, periodo: str | None = None,
+                    historico: dict | None = None) -> str:
     """Responde uma pergunta ao vivo (chat do dashboard) sobre o PERÍODO consultado.
 
     `periodo` = rótulo do período dos dados (ex.: "01/08 a 31/08/2026"). O usuário
@@ -460,6 +467,8 @@ def answer_question(question: str, campaign_data: list[dict], budgets: dict | No
     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
     payload = {"periodo": periodo or "não informado", "campanhas": campaign_data,
                "orcamento": budgets or {}}
+    if historico:
+        payload["historico"] = historico       # meses anteriores p/ comparação
     ctx = f"do período {periodo}" if periodo else "do período consultado"
     user_msg = (f"Pergunta: {question}\n\nDados {ctx} (responda com base NESTES dados, "
                 f"referentes a este período específico):\n```json\n"

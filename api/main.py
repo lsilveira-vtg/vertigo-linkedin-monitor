@@ -58,6 +58,8 @@ app.add_middleware(
 _data_cache: dict = {}       # "AAAA-MM" -> {ts, raw, dash}
 _ia_cache: dict = {}         # chave da análise -> {key, analysis}
 _report_cache: dict = {}     # chave do relatório (RPT-...) -> {analysis}
+_hist_cache: dict = {}       # "AAAA-MM-dd" -> {ts, hist} (histórico p/ o chat comparar)
+HIST_TTL = int(os.getenv("HIST_CACHE_TTL", "3600"))  # 1h — meses passados são imutáveis
 
 
 # ---------- autenticação ----------
@@ -117,6 +119,24 @@ def _load(month: str | None = None, force: bool = False):
     dash = dashboard_data.build_dashboard_data(start, end, ref_date=end, data=raw, use_ia=False)
     _data_cache[mk] = {"ts": time.time(), "raw": raw, "dash": dash}
     return raw, dash
+
+
+def _load_historico(month: str | None = None):
+    """Histórico compacto dos meses anteriores (para o chat comparar sem trocar o
+    seletor). Cacheado: cada montagem bate na API do LinkedIn e meses passados não
+    mudam; a chave inclui o dia para o 'mesmo período' acompanhar o mês em curso."""
+    start, end = _period(month)
+    k = f"{month or _current_month()}-{end.day}"
+    c = _hist_cache.get(k)
+    if c and (time.time() - c["ts"] < HIST_TTL):
+        return c["hist"]
+    try:
+        hist = dashboard_data.historico_para_chat(start, end)
+    except Exception as exc:
+        print(f"  aviso: não montei o histórico do chat: {exc}")
+        hist = None
+    _hist_cache[k] = {"ts": time.time(), "hist": hist}
+    return hist
 
 
 def _load_analise_ia(month: str | None = None, force: bool = False):
@@ -217,8 +237,10 @@ def ask(p: Pergunta, user: str = Depends(current_user)):
         raise HTTPException(422, "Pergunta vazia.")
     cid = (p.conversation_id or "").strip() or uuid.uuid4().hex[:12]
     raw, dash = _load(p.month)
+    hist = _load_historico(p.month)
     resposta = analyst_ai.answer_question(q, raw, dash.get("budget"),
-                                          history=p.history, periodo=dash.get("period"))
+                                          history=p.history, periodo=dash.get("period"),
+                                          historico=hist)
     try:
         chat_history.add(cid, q, resposta, user.split("@")[0],
                          datetime.now(BRT).strftime("%d/%m %H:%M"))
