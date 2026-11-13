@@ -354,19 +354,21 @@ def build_dashboard_data(start: date, end: date, ref_date: date | None = None,
     for c in sorted(data, key=lambda x: x.get("investimento_brl", 0) or 0, reverse=True):
         v = saude_by.get(c["nome"])
         clk = c.get("cliques", 0) or 0
-        traf = c.get("tipo") == "trafego"
+        # "reach" = tráfego ou conhecimento de marca: avaliar por alcance/CPC/CTR,
+        # nunca por leads/CPL (ex.: grupo de marca da Liferay).
+        reach = c.get("tipo") in ("trafego", "branding")
         campaigns.append({
             "nome": c["nome"],
             "tipo": c.get("tipo", "leads"),
             "status": c.get("status", ""),
             "saude": v.saude if v else "",
             "investimento": round(c.get("investimento_brl", 0) or 0, 2),
-            "leads": None if traf else (c.get("leads", 0) or 0),
-            "cpl": c.get("cpl_brl") if not traf else None,
-            "cpl_hist": None if traf else cpl_hist_grupo.get(c["nome"]),
+            "leads": None if reach else (c.get("leads", 0) or 0),
+            "cpl": c.get("cpl_brl") if not reach else None,
+            "cpl_hist": None if reach else cpl_hist_grupo.get(c["nome"]),
             "impressoes": c.get("impressoes", 0) or 0,
             "cliques": clk,
-            "cpc": round(c["investimento_brl"] / clk, 2) if (traf and clk) else None,
+            "cpc": round(c["investimento_brl"] / clk, 2) if (reach and clk) else None,
             "ctr": c.get("ctr"),
             "diagnostico": v.diagnostico if v else "",
             "recomendacao": v.recomendacao if v else "",

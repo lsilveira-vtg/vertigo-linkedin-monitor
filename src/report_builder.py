@@ -36,6 +36,24 @@ MONTHLY_BUDGETS: dict[str, float] = json.loads(os.getenv("MONTHLY_BUDGETS_JSON",
 RATEIO_CAMPANHAS: tuple[str, ...] = ("liferay",)
 RATEIO_FATOR: float = 0.5
 
+# Tipo por SUBSTRING do nome, quando nao ha config por id (CAMPAIGN_CONFIG manda).
+# Ex.: o grupo de marca da Liferay "IA no Canal do Corretor" e CONHECIMENTO DA MARCA
+# (alcance) — avaliar por impressoes/engajamento, nunca por leads/CPL.
+_TYPE_BY_NAME: tuple[tuple[str, str], ...] = (
+    ("ia no canal do corretor", "branding"),
+)
+
+
+def _tipo(cfg: dict, nome: str) -> str:
+    """Tipo da campanha: config por id tem prioridade; senao casa por nome; senao leads."""
+    if cfg.get("type"):
+        return cfg["type"]
+    low = (nome or "").lower()
+    for sub, tipo in _TYPE_BY_NAME:
+        if sub in low:
+            return tipo
+    return "leads"
+
 
 def _group_names() -> dict[str, str]:
     """{id_do_grupo_de_campanha: nome}. Se a API falhar, retorna {} (sem rateio)."""
@@ -77,12 +95,13 @@ def build_report_for_period(start: date, end: date) -> str:
     for campaign_id, metrics in analytics.items():
         cfg = CAMPAIGN_CONFIG.get(str(campaign_id), {})
         meta = campaigns_meta.get(campaign_id, {})
-        ctype = cfg.get("type", "leads")
+        nome = cfg.get("display", meta.get("name", str(campaign_id)))
+        ctype = _tipo(cfg, nome)
         fator = _fator_rateio(meta, group_names)
 
         rep = CampaignReport(
             emoji=cfg.get("emoji", "📊"),
-            name=cfg.get("display", meta.get("name", str(campaign_id))),
+            name=nome,
             note=cfg.get("note", ""),
             kind=ctype,
             invest=metrics.get("costInLocalCurrency", 0) * fator,
@@ -140,9 +159,10 @@ def collect_campaign_data(start: date, end: date) -> list[dict]:
         leads = int(m.get("oneClickLeads", 0))
         impressions = int(m.get("impressions", 0))
         clicks = int(m.get("clicks", 0))
+        nome = cfg.get("display", meta.get("name", str(campaign_id)))
         out.append({
-            "nome": cfg.get("display", meta.get("name", str(campaign_id))),
-            "tipo": cfg.get("type", "leads"),
+            "nome": nome,
+            "tipo": _tipo(cfg, nome),
             "status": meta.get("status", ""),
             "rateio_5050": fator < 1.0,
             "investimento_brl": invest,

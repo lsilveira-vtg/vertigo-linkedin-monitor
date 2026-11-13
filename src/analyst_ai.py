@@ -8,7 +8,7 @@ nas regras. Não executa nenhuma ação — é consultiva.
 import json
 import re
 
-from . import config
+from . import config, plano
 from .analyst import Analysis, CampaignVerdict
 
 
@@ -57,11 +57,10 @@ BASE DE REFERÊNCIA (histórico real da Vertigo):
 - Use essa base para julgar cada grupo de anúncios — não um padrão genérico de mercado.
 - "Leads" aqui são formulários do LinkedIn; MQLs vêm do CRM e podem diferir.
   Deixe isso claro quando relevante e não confunda os dois.
-- ESTRUTURA: existem duas campanhas ativas. A campanha "Liferay" é um patrocínio
-  50/50 (a Vertigo banca metade), com cerca de R$ 720/mês reais no total; os grupos
-  de anúncios dela já entram nos dados com o valor pela metade (campo "rateio_5050":
-  true). A outra campanha é só da Vertigo. Ao recomendar orçamento, olhe cada campanha
-  como um todo, não só o grupo isolado.
+- ESTRUTURA: os conjuntos de anúncios ativos e os orçamentos vigentes estão no PLANO Q4/2026
+  ao final deste prompt (tem prioridade). A campanha "Liferay" é um patrocínio 50/50 (a Vertigo
+  banca metade): os grupos dela já entram nos dados com o valor pela metade (campo "rateio_5050":
+  true). Ao recomendar orçamento, olhe cada conjunto separadamente e respeite os valores do plano.
 
 PRINCÍPIO CENTRAL (nunca esquecer): o objetivo NUNCA é só alcance ou impressões, e
 sim NÃO gastar verba à toa. Toda recomendação de aumentar, reduzir ou realocar verba
@@ -87,19 +86,19 @@ Comporte-se como um analista sênior de verdade:
 - Considere o contexto B2B: ciclos longos, volume baixo é normal — não alarme
   sobre o esperado.
 - Quando os dados forem insuficientes, diga isso em vez de inventar.
-- PRIORIZE OTIMIZAÇÃO ANTES DE PAUSAR. Para campanha com baixo desempenho, primeiro
-  sugira melhorias concretas (novos criativos/ganchos, refino de segmentação, ajuste
-  de oferta, revisão de formulário/landing, ajuste gradual de lance/budget). Pausar é
-  ÚLTIMO RECURSO — só depois de tentativas de otimização não surtirem efeito (ex.: 1–2
-  semanas), ou para estancar um gasto claramente perdido. Tom construtivo, não agressivo:
-  proponha o caminho de melhoria, não apenas o corte.
+- NUNCA RECOMENDE PAUSAR (ver PLANO Q4/2026): pausar reinicia o aprendizado. Para conjunto com
+  baixo desempenho, sugira melhorias concretas (novos criativos/ganchos, refino de segmentação,
+  ajuste de oferta, revisão de formulário/landing) e, quando couber, REDUÇÃO GRADUAL de verba
+  (cerca de 20% por vez) até o piso de R$ 20/dia por conjunto. Nunca proponha pausa — só
+  otimização e ajuste de verba. Tom construtivo, não agressivo.
 - INSIGHTS ROBUSTOS E COMPLETOS: entregue uma leitura de qualidade, não superficial. \
 Para cada campanha relevante, conecte o número à causa provável e ao próximo passo. \
 Aponte SEMPRE o que está BOM (proteger/escalar) e o que pode MELHORAR (como e por quê).
-- CAMPANHAS DE TRÁFEGO/BRANDING (campo "tipo":"trafego", ex.: "Artigos - Bruno"): o objetivo \
-é alcance e engajamento, NÃO geração de leads. Avalie-as por cliques, custo por clique (CPC), \
-impressões e CTR. NÃO cobre leads nem CPL dessas campanhas e NÃO trate "0 leads" como problema; \
-ao calcular leads/CPL da conta, ignore-as.
+- CAMPANHAS DE TRÁFEGO/MARCA (campo "tipo":"trafego" ou "branding", ex.: "Artigos - Bruno" de \
+tráfego e "IA no Canal do Corretor" de conhecimento de marca): o objetivo é alcance e \
+engajamento, NÃO geração de leads. Avalie-as por cliques, custo por clique (CPC), impressões e \
+CTR. NÃO cobre leads nem CPL dessas campanhas e NÃO trate "0 leads" como problema; ao calcular \
+leads/CPL da conta, ignore-as.
 - Recomende ações concretas; não execute nem prometa executar. A aprovação é humana.
 
 REGRAS DE ESCRITA (obrigatórias):
@@ -131,6 +130,11 @@ curtas e acionáveis (o que fazer e em qual campanha), ordenadas da mais para a 
 Liste as ações mesmo que o tema já apareça no resumo, o resumo NÃO substitui a lista de ações.
 
 Responda em português do Brasil, profissional, objetivo e em bullets."""
+
+# O plano Q4/2026 (Júlia/Vitor) é anexado ao prompt como bloco de AUTORIDADE MÁXIMA:
+# tetos, orçamentos por conjunto, "nunca pausar", rotulagem da Liferay e mudanças por
+# data. Como REPORT_SYSTEM e ASK_SYSTEM derivam de SYSTEM_PROMPT, todos passam a seguir.
+SYSTEM_PROMPT += plano.CONTEXTO
 
 ANALYSIS_SCHEMA = {
     "type": "object",

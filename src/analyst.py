@@ -85,10 +85,10 @@ def _analisar_leads(c: dict) -> CampaignVerdict:
                         "O gasto sem conversão costuma vir de segmentação, criativo, oferta ou "
                         "do fluxo pós-clique (formulário/landing).",
             saude="critica",
-            recomendacao="Otimizar antes de pausar: (1) testar novos criativos e ganchos; "
+            recomendacao="Otimizar (sem pausar): (1) testar novos criativos e ganchos; "
                          "(2) refinar a segmentação; (3) revisar a oferta e o formulário/landing. "
-                         "Ajustar o lance/budget gradualmente. Se após 1–2 semanas de ajustes "
-                         "ainda não gerar leads, aí sim considerar pausar.",
+                         "Se não reagir, REDUZIR a verba aos poucos (cerca de 20% por vez) até o "
+                         "piso de R$ 20/dia. Não pausar (pausar reinicia o aprendizado).",
         )
     if leads == 0:
         return CampaignVerdict(

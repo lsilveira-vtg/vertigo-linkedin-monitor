@@ -587,12 +587,13 @@ function chartDonut(){
 function rows(){
   const list=DATA.campaigns.filter(c=>filter==="all"||c.saude===filter);
   $("#rows").innerHTML=list.map(c=>{
-    const traf=c.tipo==="trafego";
-    return `<tr><td><span class="cn"><span class="dot" style="background:${HC[c.saude]||'#888'}"></span>${c.nome}${traf?' <span class="t">TRÁFEGO</span>':''}</span></td>
+    const reach=c.tipo==="trafego"||c.tipo==="branding";
+    const tag=c.tipo==="trafego"?' <span class="t">TRÁFEGO</span>':(c.tipo==="branding"?' <span class="t">MARCA</span>':'');
+    return `<tr><td><span class="cn"><span class="dot" style="background:${HC[c.saude]||'#888'}"></span>${c.nome}${tag}</span></td>
       <td><span class="pill" style="background:var(--surface-2);color:var(--muted)">${ST[c.status]||c.status||NA}</span></td>
-      <td class="num">${BRL0(c.investimento)}</td><td class="num">${traf?DASH:c.leads}</td>
-      <td class="num">${traf?DASH:cplCell(c)}</td><td class="num">${(c.impressoes||0).toLocaleString("pt-BR")}</td><td class="num">${(c.cliques||0).toLocaleString("pt-BR")}</td>
-      <td class="num">${traf?BRL2(c.cpc):DASH}</td><td class="num">${PCT(c.ctr)}</td></tr>`;
+      <td class="num">${BRL0(c.investimento)}</td><td class="num">${reach?DASH:c.leads}</td>
+      <td class="num">${reach?DASH:cplCell(c)}</td><td class="num">${(c.impressoes||0).toLocaleString("pt-BR")}</td><td class="num">${(c.cliques||0).toLocaleString("pt-BR")}</td>
+      <td class="num">${reach?BRL2(c.cpc):DASH}</td><td class="num">${PCT(c.ctr)}</td></tr>`;
   }).join("")||'<tr><td colspan="9" style="text-align:center;color:var(--faint);padding:24px">Nenhum grupo de anúncios neste filtro.</td></tr>';
 }
 

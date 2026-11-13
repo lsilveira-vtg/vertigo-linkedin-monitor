@@ -28,7 +28,10 @@ _DEFAULT_RULES: dict = {
     "overrides": {
         "2026-04": 4000.00, "2026-05": 4000.00, "2026-06": 4000.00,
         "2026-07": 2534.44, "2026-08": 2636.37, "2026-09": 3400.00,
-        "2026-10": 1500.00, "2026-11": 1300.00, "2026-12": 1100.00,
+        "2026-10": 1500.00,
+        # Nov/Dez: plano Q4/2026 de Júlia e Vitor (já com Liferay a 50% + conjunto em
+        # inglês). Substituem os tetos antigos; ver src/plano.py.
+        "2026-11": 4600.00, "2026-12": 2750.00,
     },
     "campanhas": {},
 }
