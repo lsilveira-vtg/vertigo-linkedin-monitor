@@ -17,9 +17,16 @@ from .report import CampaignReport, format_report
 # classificacao correta mesmo sem a variavel no ambiente. O Secret
 # CAMPAIGN_CONFIG_JSON, quando presente, sobrescreve/complementa.
 # Formato: {"123456": {"emoji": "...", "type": "leads", "display": "..."}}
+# Códigos reais confirmados no Campaign Manager (13/11/2026). Os conjuntos de
+# LEADS (padrão) NÃO precisam entrar aqui. Só os que NÃO são leads — avaliados por
+# alcance/engajamento (CPC/CTR), nunca por CPL:
 _DEFAULT_CAMPAIGN_CONFIG: dict[str, dict] = {
-    # Artigos do Bruno = trafego/branding: avaliar por cliques/CPC/CTR, nao por leads/CPL.
+    # Artigos - Bruno = trafego/engajamento: avaliar por cliques/CPC/CTR, não por leads/CPL.
     "377232663": {"type": "trafego", "display": "Artigos - Bruno", "emoji": "📊"},
+    # Impulsionamento - IA no Canal do Corretor (Liferay) = conhecimento da marca (alcance).
+    "775502383": {"type": "branding", "display": "Impulsionamento - IA no Canal do Corretor", "emoji": "📣"},
+    # Darkpost - Case CNP Seguradora (Liferay, marca) = alcance.
+    "810057963": {"type": "branding", "display": "Darkpost - Case CNP Seguradora", "emoji": "📣"},
 }
 CAMPAIGN_CONFIG: dict[str, dict] = {
     **_DEFAULT_CAMPAIGN_CONFIG,
@@ -37,10 +44,12 @@ RATEIO_CAMPANHAS: tuple[str, ...] = ("liferay",)
 RATEIO_FATOR: float = 0.5
 
 # Tipo por SUBSTRING do nome, quando nao ha config por id (CAMPAIGN_CONFIG manda).
-# Ex.: o grupo de marca da Liferay "IA no Canal do Corretor" e CONHECIMENTO DA MARCA
-# (alcance) — avaliar por impressoes/engajamento, nunca por leads/CPL.
+# Fallback caso um código mude. Marca/alcance da Liferay: "Impulsionamento - IA no
+# Canal do Corretor" e "Darkpost - Case CNP Seguradora". Cuidado: o conjunto de LEADS
+# "Liferay - Leads - Canal do Corretor + Case CNP" NÃO pode casar aqui (fica leads).
 _TYPE_BY_NAME: tuple[tuple[str, str], ...] = (
     ("ia no canal do corretor", "branding"),
+    ("darkpost - case cnp", "branding"),
 )
 
 

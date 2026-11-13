@@ -55,14 +55,28 @@ LIFERAY (patrocínio 50/50 — a Vertigo paga tudo e a Liferay reembolsa 50%):
   acumulado (bruto) até 10/11/2026: R$ 6.119,15 — restam cerca de R$ 1.080. A campanha encerra
   em 30/11/2026. Acompanhe o ritmo e ALERTE se o gasto projetar passar de R$ 7.200 até lá.
 
-ORÇAMENTO DIÁRIO POR CONJUNTO (R$/dia, por data de vigência):
-- Financeiras (Materiais Ricos): 70 -> 56 (12/11) -> 45 (19/11) -> 30 (1/12) -> 20 (19/12)
-- VeeCode (Materiais Ricos): 40 -> 32 (12/11) -> 26 (19/11) -> 20 (1/12)
-- Artigos do Bruno (marca/tráfego): 35 -> 28 (12/11) -> 22 (19/11) -> 20 (1/12)
-- IA no Canal do Corretor (Liferay, marca): 25/dia até 30/11
-- Liferay leads (novo): 28/dia de 12/11 a 30/11
-- Inglês (e-book EUA + diagnóstico VAIM): 25/dia de 13/11 a 18/12 (pode seguir em 20/dia até
-  31/12 se o custo por lead do e-book ficar abaixo de R$ 150 em 14/12)
+ORÇAMENTO DIÁRIO POR CONJUNTO (R$/dia, por data de vigência). Os nomes abaixo são EXATOS
+como aparecem no Campaign Manager (código entre parênteses):
+- Materiais Ricos - Segmentos (Financeiras) (cód. 276543063): 70 -> 56 (12/11) -> 45 (19/11)
+  -> 30 (1/12) -> 20 (19/12)
+- VeeCode - Materiais Ricos (cód. 296725553): 40 -> 32 (12/11) -> 26 (19/11) -> 20 (1/12)
+- Artigos - Bruno (cód. 377232663 — tráfego/engajamento): 35 -> 28 (12/11) -> 22 (19/11)
+  -> 20 (1/12)
+- Impulsionamento - IA no Canal do Corretor (cód. 775502383 — Liferay, MARCA): 25/dia até 30/11
+- Liferay - Leads - Canal do Corretor + Case CNP (cód. 902105083 — novo, leads): 28/dia de
+  12/11 a 30/11
+- EUA - FSI Florida - E-book AI Gateway (EN) (cód. 902243203 — inglês, leads): 25/dia de 13/11
+  a 18/12 (pode seguir em 20/dia até 31/12 se o custo por lead do e-book ficar abaixo de
+  R$ 150 em 14/12)
+- Darkpost - Case CNP Seguradora (cód. 810057963 — Liferay, MARCA/alcance): conjunto de marca
+  sob a campanha Liferay; avaliar por alcance, nunca por leads/CPL.
+
+ESTRUTURA DE CAMPANHAS (campaignGroup) no Campaign Manager:
+- "Campanhas Plano de Mídia - Vertigo": Materiais Ricos (Financeiras), VeeCode, Artigos - Bruno.
+- "Liferay - Junho>Novembro26" (Conhecimento da marca): IA no Canal do Corretor, Darkpost Case CNP.
+- "Liferay - Geração de Leads - Nov26": Liferay - Leads - Canal do Corretor + Case CNP.
+- "EUA - E-book AI Gateway (EN) - Leads": EUA - FSI Florida - E-book AI Gateway (EN).
+O rateio 50/50 vale para TUDO das duas campanhas Liferay (gasto entra pela metade no painel).
 
 TETOS MENSAIS DE REFERÊNCIA (já com Liferay a 50% e o conjunto em inglês):
 nov/2026 = R$ 4.600; dez/2026 = R$ 2.750.
