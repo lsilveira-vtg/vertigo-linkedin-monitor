@@ -107,3 +107,23 @@ def liferay_projecao(fim: date = LIFERAY_FIM) -> dict:
         "estoura": gasto > LIFERAY_TETO_TOTAL,
         "fim": LIFERAY_FIM.isoformat(),
     }
+
+
+def liferay_resumo(ref: date | None = None) -> dict | None:
+    """Dados do banner do patrocínio Liferay no painel. Relevante só enquanto a
+    campanha roda (o mês de encerramento, 11/2026). Fora disso retorna None."""
+    ref = ref or date.today()
+    if not (ref.year == LIFERAY_FIM.year and ref.month == LIFERAY_FIM.month):
+        return None
+    proj = liferay_projecao()
+    return {
+        "teto": LIFERAY_TETO_TOTAL,
+        "gasto_base": LIFERAY_GASTO_BASE,
+        "base_data": LIFERAY_BASE_DATA.strftime("%d/%m"),
+        "restante": round(LIFERAY_TETO_TOTAL - LIFERAY_GASTO_BASE, 2),
+        "projetado_fim": proj["projetado_fim"],
+        "pct_base": LIFERAY_GASTO_BASE / LIFERAY_TETO_TOTAL,
+        "pct_projetado": proj["pct_projetado"],
+        "fim": LIFERAY_FIM.strftime("%d/%m"),
+        "estoura": proj["estoura"],
+    }

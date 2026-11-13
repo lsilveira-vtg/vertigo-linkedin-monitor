@@ -230,6 +230,7 @@
     <div class="updated" id="updated"></div>
     <div id="alert"></div>
     <div id="monthHook" class="hook" hidden></div>
+    <div id="liferay" class="hook" hidden></div>
     <section class="grid kpis" id="kpis"></section>
     <section class="card analysis hero collapsible" data-key="analise">
       <button class="chead" type="button"><span class="ct">Análise &amp; recomendações do agente <span id="anaLoad" class="anaload" hidden>· aprofundando com IA…</span><span id="anaStamp" class="anaload" hidden></span></span><span class="chev">▾</span></button>
@@ -435,6 +436,17 @@ function render(){
       hk.hidden=false;
       const a=$("#hookPrev"); if(a) a.onclick=()=>{const s=$("#monthSel"); if(s) s.value=prev; curMonth=prev; load();};
     } else { hk.hidden=true; }
+  }
+  // Banner do patrocínio Liferay (teto de R$ 7.200, encerra 30/11) — só em nov/26.
+  const lf=DATA.liferay, lfe=$("#liferay");
+  if(lfe){
+    if(lf){
+      const pb=Math.round(lf.pct_base*100), pp=Math.round(lf.pct_projetado*100);
+      const col=lf.estoura?'var(--crit)':(lf.pct_projetado>0.9?'var(--warn)':'var(--good)');
+      lfe.innerHTML=`🤝 <b>Liferay</b> (patrocínio 50/50): <b>${BRL0(lf.gasto_base)}</b> de <b>${BRL0(lf.teto)}</b> até ${lf.base_data} (${pb}%). No ritmo planejado, fecha <b>~${BRL0(lf.projetado_fim)}</b> (${pp}%) em ${lf.fim}.
+        <div style="margin-top:7px;height:8px;background:var(--surface-2);border-radius:6px;overflow:hidden"><div style="height:100%;width:${Math.min(pp,100)}%;background:${col};border-radius:6px"></div></div>`;
+      lfe.hidden=false;
+    } else { lfe.hidden=true; }
   }
   const over=k.consumo_teto!=null&&k.consumo_teto>1;
   $("#alert").innerHTML=over?`<div class="alert"><div><b>⚠️ Orçamento acima do teto (${Math.round(k.consumo_teto*100)}% do limite).</b><p>Gasto de ${BRL0(DATA.budget.gasto)} sobre um teto de ${BRL0(DATA.budget.teto)} no mês.</p></div></div>`:"";

@@ -6,7 +6,7 @@ campanhas e a análise do agente. Reaproveita a coleta e o analista existentes.
 import calendar
 from datetime import date, datetime, timedelta, timezone
 
-from . import analyst, analyst_ai, budget, config
+from . import analyst, analyst_ai, budget, config, plano
 from .report_builder import collect_campaign_data, RATEIO_FATOR
 
 BRT = timezone(timedelta(hours=-3))
@@ -393,6 +393,7 @@ def build_dashboard_data(start: date, end: date, ref_date: date | None = None,
             start.replace(day=1), ref_date,
             {c["nome"] for c in data if c.get("rateio_5050")}),
         "campaigns": campaigns,
+        "liferay": plano.liferay_resumo(ref_date),      # banner do patrocínio (None fora de nov/26)
         "analysis": {
             "resumo": analysis.resumo_executivo,
             "acoes": analysis.acoes_prioritarias,
