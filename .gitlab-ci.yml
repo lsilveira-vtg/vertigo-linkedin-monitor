@@ -76,6 +76,19 @@ testar_analise:
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: manual
 
+# Cria a planilha EDITÁVEL do plano de mídia (uma vez). Manual: CI/CD > Pipelines >
+# Run pipeline (branch main) > botão deste job. Precisa de PLANO_EDITORS cadastrado.
+# Ao terminar, copie o PLANO_SHEET_ID do log e cadastre em CI/CD > Variables.
+criar_plano_sheet:
+  extends: .python_base
+  stage: report
+  needs: []
+  script:
+    - python scripts/criar_plano_sheet.py
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+
 # CPL histórico (12 meses) por campanha — imprime no log, não altera nada.
 cpl_historico:
   extends: .python_base

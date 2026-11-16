@@ -131,10 +131,10 @@ Liste as ações mesmo que o tema já apareça no resumo, o resumo NÃO substitu
 
 Responda em português do Brasil, profissional, objetivo e em bullets."""
 
-# O plano Q4/2026 (Júlia/Vitor) é anexado ao prompt como bloco de AUTORIDADE MÁXIMA:
-# tetos, orçamentos por conjunto, "nunca pausar", rotulagem da Liferay e mudanças por
-# data. Como REPORT_SYSTEM e ASK_SYSTEM derivam de SYSTEM_PROMPT, todos passam a seguir.
-SYSTEM_PROMPT += plano.CONTEXTO
+# O plano Q4/2026 (Júlia/Vitor) é anexado ao prompt como bloco de AUTORIDADE MÁXIMA
+# (tetos, orçamentos por conjunto, "nunca pausar", rotulagem, mudanças). Ele vem da
+# PLANILHA editável e é injetado via plano.contexto() NA HORA de cada chamada (não no
+# import), para refletir edições da planilha sem precisar reiniciar o processo.
 
 ANALYSIS_SCHEMA = {
     "type": "object",
@@ -224,7 +224,7 @@ def analyze(period_label: str, campaign_data: list[dict], budgets: dict | None =
     with client.messages.stream(
         model=config.ANALYST_MODEL,
         max_tokens=12000,
-        system=SYSTEM_PROMPT,
+        system=SYSTEM_PROMPT + plano.contexto(),
         thinking={"type": "adaptive"},
         output_config={"format": {"type": "json_schema", "schema": ANALYSIS_SCHEMA}},
         messages=[{"role": "user", "content": user_msg}],
@@ -363,7 +363,7 @@ def build_report_analysis(period_label: str, campaign_data: list[dict],
     with client.messages.stream(
         model=config.ANALYST_MODEL,
         max_tokens=16000,
-        system=REPORT_SYSTEM,
+        system=REPORT_SYSTEM + plano.contexto(),
         thinking={"type": "adaptive"},
         output_config={"format": {"type": "json_schema", "schema": REPORT_SCHEMA}},
         messages=[{"role": "user", "content": user_msg}],
@@ -492,7 +492,7 @@ def answer_question(question: str, campaign_data: list[dict], budgets: dict | No
     with client.messages.stream(
         model=config.ANALYST_MODEL,
         max_tokens=1200,
-        system=ASK_SYSTEM,
+        system=ASK_SYSTEM + plano.contexto(),
         messages=msgs,
     ) as stream:
         response = stream.get_final_message()

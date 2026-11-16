@@ -138,6 +138,15 @@ def main() -> None:
     except Exception as exc:
         print(f"  aviso: falha ao atualizar visualizações: {exc}")
 
+    # Lê o plano da planilha editável e, se Júlia/Vitor mudaram algo desde ontem,
+    # avisa por e-mail (um resumo só, e só quando houve mudança). Roda ANTES dos
+    # textos do dia, para os snapshots já saírem com o plano atualizado.
+    try:
+        from src import plano_mudancas
+        plano_mudancas.checar_e_avisar()
+    except Exception as exc:
+        print(f"  aviso: checagem de mudanças do plano falhou: {exc}")
+
     # Pré-gera e congela os textos do dia (card do painel + relatório parcial). Assim,
     # quando a primeira pessoa abrir o painel, a análise já está pronta e idêntica para
     # todos (single source of truth), sem a "corrida" do primeiro clique.

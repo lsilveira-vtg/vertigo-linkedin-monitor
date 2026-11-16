@@ -47,7 +47,17 @@ _RULES: dict = {
 
 
 def total_cap(year_month: str) -> float | None:
-    """Teto total da conta para o mês (AAAA-MM). Usa override se houver."""
+    """Teto total da conta para o mês (AAAA-MM).
+
+    Prioridade: teto do PLANO (planilha editável) > override do código > padrão.
+    Assim, mudar o teto na planilha já reflete aqui, sem tocar no código."""
+    try:
+        from . import plano
+        t = plano.tetos().get(year_month)
+        if t:
+            return float(t)
+    except Exception:
+        pass
     overrides = _RULES.get("overrides", {})
     if year_month in overrides:
         return float(overrides[year_month])

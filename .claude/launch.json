@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "painel-preview",
+      "runtimeExecutable": "C:/Users/Leandro/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8777",
+        "--directory",
+        "C:/Users/Leandro/AppData/Local/Temp/claude/C--Users-Leandro--claude-skills/dbcb6960-4f36-4f82-897f-85be2bf3ce20/scratchpad/preview_server"
+      ],
+      "port": 8777
+    }
+  ]
+}

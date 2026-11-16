@@ -1,158 +1,236 @@
 """Plano de mídia paga da Vertigo — Q4 2026 (fonte única).
 
-Definido por Júlia e Vitor. O Vitor executa no Campaign Manager; cada mudança é
-registrada aqui (a Júlia avisa) para os relatórios considerarem. Este módulo:
+Definido por Júlia e Vitor. O Vitor executa no Campaign Manager; cada mudança
+precisa ser conhecida pelo agente para os relatórios considerarem.
 
-- CONTEXTO: bloco de texto AUTORITATIVO injetado nos prompts da IA (análise do
-  painel, relatório PDF e chat), para o agente seguir as regras e os orçamentos
-  do plano em vez dos valores genéricos antigos.
-- Constantes/funções do patrocínio Liferay (teto total de R$ 7.200), usadas no
-  acompanhamento de ritmo.
+A FONTE dos dados do plano é uma PLANILHA editável (PLANO_SHEET_ID), lida pelo
+`plano_sheet`. Assim Júlia/Vitor mudam verba, status, datas e observações direto
+na planilha, sem mexer no código nem acionar ninguém — o agente lê na próxima
+coleta. Se a planilha não estiver configurada ou acessível, o agente usa o
+DADOS_PADRAO abaixo (o plano de hoje), então nada quebra enquanto a planilha não
+existe.
 
-Como atualizar: quando o Vitor mudar algo, acrescente a linha em MUDANÇAS e, se
-for orçamento, ajuste ORÇAMENTO DIÁRIO. Tetos mensais ficam em budget.py.
+Partes FIXAS (regras de como avaliar) ficam no código, abaixo. Partes que MUDAM
+(verbas, status, datas, tetos, observações) vêm da planilha.
 """
 from datetime import date
+from time import time
 
 # ----------------------------------------------------------------------------
-# Patrocínio Liferay (50/50): a Vertigo paga tudo e a Liferay reembolsa 50%.
-# O teto de R$ 7.200 vale para a SOMA de TUDO da Liferay (campanha de marca antiga
-# + campanha nova de leads). Situação em 16/11/2026 (relatório do Vitor):
-#   - Campanha de MARCA "Liferay - Junho>Novembro26" (1152903403): ENCERROU em 15/11,
-#     gasto final FIXO de R$ 6.330,81 (não cresce mais; sem reativação).
-#   - Campanha NOVA de leads "Liferay - Geração de Leads - Nov26" (1255513733): trava
-#     total de R$ 530, roda de 12/11 a 30/11; gasto até 16/11 = R$ 114,98.
+# DADOS DO PLANO (fallback). Mesma forma que o `plano_sheet` devolve ao ler a
+# planilha. Situação em 16/11/2026 (relatório do Vitor).
 # ----------------------------------------------------------------------------
-LIFERAY_TETO_TOTAL = 7200.00          # teto do patrocínio (R$ 3.600 de cada lado)
-LIFERAY_ANTIGA_FINAL = 6330.81        # campanha de marca encerrada em 15/11 (valor final fixo)
-LIFERAY_NOVA_TRAVA = 530.00           # trava total da campanha nova de leads (12/11-30/11)
-LIFERAY_NOVA_GASTO = 114.98           # gasto da campanha nova até a data base
-LIFERAY_BASE_DATA = date(2026, 11, 16)
-LIFERAY_GASTO_BASE = round(LIFERAY_ANTIGA_FINAL + LIFERAY_NOVA_GASTO, 2)  # 6445.79 até 16/11
-LIFERAY_FIM = date(2026, 11, 30)      # a campanha nova encerra nesta data
+DADOS_PADRAO: dict = {
+    # Um item por CONJUNTO de anúncios (o que a API chama "campaign"=sponsoredCampaign).
+    # tipo: "leads" | "tráfego" | "marca".  status: "ativo" | "pausado" | "encerrado".
+    "conjuntos": [
+        {"codigo": "276543063", "nome": "Materiais Ricos - Segmentos (Financeiras)",
+         "tipo": "leads", "status": "ativo", "verba_dia": 56.0, "inicio": "", "fim": "",
+         "obs": "Reduções planejadas: 45 em 19/11 (só se a Júlia confirmar), 30 em 1/12, 20 em 19/12."},
+        {"codigo": "296725553", "nome": "VeeCode - Materiais Ricos",
+         "tipo": "leads", "status": "ativo", "verba_dia": 32.0, "inicio": "", "fim": "",
+         "obs": "Reduções: 26 em 19/11 (se confirmado), 20 em 1/12."},
+        {"codigo": "377232663", "nome": "Artigos - Bruno",
+         "tipo": "tráfego", "status": "ativo", "verba_dia": 28.0, "inicio": "", "fim": "",
+         "obs": "Tráfego/engajamento (avaliar por CPC/CTR). Reduções: 22 em 19/11 (se confirmado), 20 em 1/12."},
+        {"codigo": "902105083", "nome": "Liferay - Leads - Canal do Corretor + Case CNP",
+         "tipo": "leads", "status": "ativo", "verba_dia": 28.0, "inicio": "12/11", "fim": "30/11",
+         "obs": "Campanha NOVA de leads da Liferay (trava R$ 530). 3 anúncios dentro do conjunto: "
+                "Case CNP, Canal do Corretor 4x5 e IA no Canal azul (criado 16/11, sob avaliação)."},
+        {"codigo": "902243203", "nome": "EUA - FSI Florida - E-book AI Gateway (EN)",
+         "tipo": "leads", "status": "pausado", "verba_dia": 25.0, "inicio": "", "fim": "",
+         "obs": "Inglês. Em rascunho/pausado em 16/11 — AINDA NÃO no ar. Entra ~18/11 (após post da "
+                "Mariana). Pode seguir 20/dia até 31/12 se o CPL do e-book ficar < R$ 150 em 14/12."},
+        {"codigo": "775502383", "nome": "Impulsionamento - IA no Canal do Corretor",
+         "tipo": "marca", "status": "encerrado", "verba_dia": 0.0, "inicio": "", "fim": "15/11",
+         "obs": "Marca antiga da Liferay (alcance). ENCERRADA em 15/11."},
+        {"codigo": "810057963", "nome": "Darkpost - Case CNP Seguradora",
+         "tipo": "marca", "status": "encerrado", "verba_dia": 0.0, "inicio": "", "fim": "15/11",
+         "obs": "Marca antiga da Liferay (alcance). ENCERRADA em 15/11."},
+    ],
+    # Patrocínio Liferay (50/50). Valores brutos. base_data/fim são date.
+    "liferay": {
+        "teto": 7200.00,
+        "antiga_final": 6330.81,   # campanha de marca encerrada em 15/11 (valor final fixo)
+        "nova_gasto": 114.98,      # gasto da campanha nova de leads até a data base
+        "nova_trava": 530.00,      # trava total da campanha nova (12/11-30/11)
+        "base_data": date(2026, 11, 16),
+        "fim": date(2026, 11, 30),
+    },
+    # Tetos mensais da conta (já com Liferay a 50% + conjunto em inglês).
+    "tetos": {"2026-11": 4600.00, "2026-12": 2750.00},
+    # Log livre de mudanças / cronograma (texto; o agente usa como contexto).
+    "observacoes": [
+        {"data": "12/11", "texto": "1ª redução de verba (Financeiras 56, VeeCode 32, Artigos 28), só o "
+                                   "diário, sem pausar. Criada a campanha nova de leads da Liferay."},
+        {"data": "13/11", "texto": "2 anúncios da Liferay leads (Case CNP e Canal do Corretor 4x5) "
+                                   "ativados e entregando."},
+        {"data": "15/11", "texto": "Campanha de marca antiga da Liferay encerrou (gasto final R$ 6.330,81)."},
+        {"data": "16/11", "texto": "3º anúncio da Liferay leads (IA no Canal azul) criado, sob avaliação."},
+        {"data": "plano", "texto": "18/11 post da Mariana + inglês entra; 19/11 2ª redução (se a Júlia "
+                                   "confirmar); 23/11 VAIM/material novo; 30/11 Liferay encerra "
+                                   "(gerar fechamento p/ prints); 1/12 e 19/12 reduções."},
+    ],
+}
 
-
-# Bloco autoritativo para os prompts da IA. Tem PRIORIDADE sobre os valores
-# genéricos do SYSTEM_PROMPT (estrutura antiga de campanhas, tetos antigos etc.).
-CONTEXTO = """
-
-== PLANO DE MÍDIA PAGA — Q4 2026 (AUTORIDADE MÁXIMA, use SEMPRE) ==
-Plano definido por Júlia e Vitor para usar a verba até o fim de 2026. O Vitor executa
-no Campaign Manager do LinkedIn; cada mudança é registrada abaixo. Estes valores e
-regras TÊM PRIORIDADE sobre qualquer estrutura/teto genérico citado antes.
+# ----------------------------------------------------------------------------
+# Parte FIXA do contexto (regras de COMO avaliar). Não muda com a planilha.
+# ----------------------------------------------------------------------------
+_REGRAS = """== PLANO DE MÍDIA PAGA — Q4 2026 (AUTORIDADE MÁXIMA, use SEMPRE) ==
+Plano definido por Júlia e Vitor para usar a verba até o fim de 2026. O Vitor executa no
+Campaign Manager; os valores e o estado de cada conjunto vêm da planilha do plano (abaixo).
+Estas regras e valores TÊM PRIORIDADE sobre qualquer estrutura/teto genérico citado antes.
 
 REGRAS GERAIS (seguir sempre):
 - NUNCA recomende PAUSAR nenhum conjunto de anúncios até 31/12/2026 — pausar reinicia o
-  aprendizado. A ÚNICA alavanca de corte é REDUZIR a verba aos poucos (cerca de 20% por
-  vez), até o PISO de R$ 20/dia por conjunto. Não sugira pausa em hipótese alguma.
-- O orçamento diário é configurado por CONJUNTO de anúncios. Trate e reporte cada conjunto
-  SEPARADO dos outros, num relatório único (para medir cada resultado).
-- Os valores de referência de orçamento são os DESTE plano. IGNORE tetos antigos (ex.:
-  R$ 1.500) e não os cite.
+  aprendizado. A ÚNICA alavanca de corte é REDUZIR a verba aos poucos (cerca de 20% por vez),
+  até o PISO de R$ 20/dia por conjunto. Não sugira pausa em hipótese alguma.
+- O orçamento diário é por CONJUNTO. Trate e reporte cada conjunto SEPARADO, num relatório único.
+- Use os valores de orçamento DESTE plano. IGNORE tetos antigos (ex.: R$ 1.500) e não os cite.
 - Porte desejado dos leads: empresas com 200+ funcionários.
-- Reporte leads TOTAIS e o custo por lead (CPL) de CADA conjunto. NÃO classifique leads por
-  nível/senioridade (A/B/C/D) nem comente cargo do lead — isso está desligado por ora.
-- APRENDIZADO: conjuntos recém-criados ou recém-ativados (Liferay leads; o inglês, quando
-  subir) ficam ~7 dias em aprendizado. NÃO trate o resultado deles como definitivo na 1ª
-  semana — contextualize que ainda estão calibrando.
-
-LIFERAY (patrocínio 50/50 — a Vertigo paga tudo e a Liferay reembolsa 50%):
-- Teto TOTAL do patrocínio: R$ 7.200 (R$ 3.600 de cada lado), somando TUDO da Liferay.
-- A campanha de MARCA "Liferay - Junho>Novembro26" (alcance: "IA no Canal do Corretor" e
-  "Darkpost - Case CNP Seguradora") ENCERROU em 15/11/2026, com gasto final de R$ 6.330,81.
-  NÃO será reativada nem editada. A partir de 16/11 a Liferay roda SÓ pela campanha de leads.
-- Campanha NOVA de leads "Liferay - Geração de Leads - Nov26": trava total de R$ 530, roda de
-  12/11 a 30/11; gasto até 16/11 = R$ 114,98.
-- Gasto Liferay acumulado (bruto) até 16/11/2026: R$ 6.445,79 — folga de R$ 754,21 no teto.
-  Projeção até 30/11: no MÁXIMO R$ 6.860,81 (antiga fechada + trava de R$ 530 da nova) ≈ 95%
-  do teto; NÃO estoura. Só alerte se o combinado projetar passar de R$ 7.200.
-- Os conjuntos de marca da antiga só aparecem em períodos até 15/11; avalie-os por
-  alcance/engajamento (CPC/CTR), NUNCA por leads/CPL, e não os compare com os de leads.
-
-ORÇAMENTO DIÁRIO POR CONJUNTO (R$/dia, por data de vigência). Nomes EXATOS do Campaign
-Manager (código entre parênteses):
-- Materiais Ricos - Segmentos (Financeiras) (cód. 276543063): 70 -> 56 (12/11) -> 45 (19/11,
-  só se a Júlia confirmar) -> 30 (1/12) -> 20 (19/12)
-- VeeCode - Materiais Ricos (cód. 296725553): 40 -> 32 (12/11) -> 26 (19/11, se confirmado)
-  -> 20 (1/12)
-- Artigos - Bruno (cód. 377232663 — tráfego/engajamento): 35 -> 28 (12/11) -> 22 (19/11, se
-  confirmado) -> 20 (1/12)
-- Liferay - Leads - Canal do Corretor + Case CNP (cód. 902105083 — NOVO, leads): 28/dia de
-  12/11 a 30/11. Público: Brasil, perfil em inglês, gerência+, 201+ funcionários, serviços
-  financeiros. Tem 3 anúncios rodando DENTRO deste conjunto (Case CNP, Canal do Corretor 4x5
-  e "IA no Canal do Corretor" criativo azul, criado em 16/11 e sob avaliação).
-- EUA - FSI Florida - E-book AI Gateway (EN) (cód. 902243203 — inglês, leads): 25/dia, sem
-  data final. AINDA NÃO ESTÁ NO AR em 16/11 (anúncio em rascunho, conjunto pausado). Entra a
-  partir de ~18/11 (após o post da Mariana, impulsionado para leads). Público: Flórida, inglês,
-  diretores+, 201-5.000 funcionários, serviços financeiros e seguros. Pode seguir em 20/dia até
-  31/12 se o custo por lead do e-book ficar abaixo de R$ 150 em 14/12.
-- Conjuntos de MARCA da Liferay antiga (IA no Canal do Corretor 775502383; Darkpost Case CNP
-  810057963): ENCERRADOS em 15/11 (ver bloco LIFERAY). Não têm mais verba diária ativa.
-
-ESTRUTURA DE CAMPANHAS (campaignGroup) no Campaign Manager:
-- "Campanhas Plano de Mídia - Vertigo": Materiais Ricos (Financeiras), VeeCode, Artigos - Bruno.
-- "Liferay - Junho>Novembro26" (1152903403, Conhecimento da marca): ENCERRADA em 15/11.
-- "Liferay - Geração de Leads - Nov26" (1255513733): Liferay - Leads - Canal do Corretor + Case CNP.
-- "EUA - E-book AI Gateway (EN) - Leads" (1255465693): EUA - FSI Florida - E-book AI Gateway (EN).
-O rateio 50/50 vale para TUDO das campanhas Liferay (gasto entra pela metade no painel).
-
-TETOS MENSAIS DE REFERÊNCIA (já com Liferay a 50% e o conjunto em inglês):
-nov/2026 = R$ 4.600; dez/2026 = R$ 2.750.
-
-MUDANÇAS REGISTRADAS (fatos confirmados pelo Vitor em 16/11; o resto é planejado):
-- 12/11 (feito): 1ª redução de verba (Financeiras 56, VeeCode 32, Artigos - Bruno 28), só o
-  diário, sem pausar nem mexer em segmentação/criativo. Criada a campanha nova de leads da
-  Liferay (R$ 28/dia, trava R$ 530, até 30/11).
-- 13/11 (feito): 2 anúncios da Liferay leads (Case CNP e Canal do Corretor 4x5) ativados e
-  entregando, sem reprovação (dia exato de início a confirmar no gráfico diário).
-- 15/11 (feito): a campanha de MARCA antiga da Liferay encerrou (término configurado; gasto
-  final R$ 6.330,81). Sem reativação.
-- 16/11 (feito): criado o 3º anúncio da Liferay leads ("IA no Canal do Corretor", criativo
-  azul), sob avaliação do LinkedIn.
-- 18/11 (planejado): post da Mariana publicado; o conjunto em inglês (e-book EUA) é impulsionado
-  para leads a partir daí.
-- 19/11 (planejado, só se a Júlia confirmar): 2ª redução (Financeiras 45, VeeCode 26, Artigos 22).
-- 23/11 (planejado): VAIM/material novo entra.
-- 30/11 (planejado): a Liferay encerra — gerar o FECHAMENTO (gasto total e leads por criativo)
-  para os prints de comprovação.
-- 1/12 e 19/12 (planejado): reduções (1/12 Financeiras 30, VeeCode 20, Artigos 20; 19/12
-  Financeiras 20). O inglês pode encerrar em 18/12 ou seguir em 20/dia até 31/12 (ver acima).
-"""
+- Reporte leads TOTAIS e o CPL de CADA conjunto. NÃO classifique leads por nível (A/B/C/D) nem
+  comente cargo do lead — está desligado por ora.
+- Conjuntos de tipo "marca" (alcance): avalie por alcance/impressões/engajamento (CPC/CTR),
+  NUNCA por leads/CPL, e não os compare com os de leads.
+- APRENDIZADO: conjuntos recém-criados ou recém-ativados ficam ~7 dias calibrando. NÃO trate o
+  resultado deles como definitivo na 1ª semana — contextualize."""
 
 
-def liferay_projecao(fim: date = LIFERAY_FIM) -> dict:
-    """Projeção do gasto final (bruto) da Liferay vs o teto de R$ 7.200.
+def _fmt_brl(v) -> str:
+    try:
+        return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except (TypeError, ValueError):
+        return str(v)
 
-    Determinística: a campanha de marca antiga encerrou em 15/11 com valor FIXO
-    (LIFERAY_ANTIGA_FINAL) e a nova tem trava total de R$ 530 (12/11-30/11). O pior
-    caso = antiga final + trava integral da nova. O `fim` é mantido por compatibilidade."""
-    projetado = LIFERAY_ANTIGA_FINAL + LIFERAY_NOVA_TRAVA   # 6860.81 (pior caso)
-    pct = projetado / LIFERAY_TETO_TOTAL if LIFERAY_TETO_TOTAL else None
+
+def _fmt_data(d) -> str:
+    return d.strftime("%d/%m") if isinstance(d, date) else str(d or "")
+
+
+def liferay_projecao(dados: dict | None = None) -> dict:
+    """Projeção do gasto final (bruto) da Liferay vs o teto.
+
+    Determinística: a campanha de marca antiga encerrou com valor FIXO (antiga_final)
+    e a nova tem trava total (nova_trava). Pior caso = antiga_final + trava integral."""
+    lf = (dados or carregar())["liferay"]
+    base = round(lf["antiga_final"] + lf["nova_gasto"], 2)
+    projetado = round(lf["antiga_final"] + lf["nova_trava"], 2)
+    teto = lf["teto"]
     return {
-        "teto": LIFERAY_TETO_TOTAL,
-        "gasto_base": LIFERAY_GASTO_BASE,
-        "projetado_fim": round(projetado, 2),
-        "pct_projetado": pct,
-        "estoura": projetado > LIFERAY_TETO_TOTAL,
-        "fim": LIFERAY_FIM.isoformat(),
+        "teto": teto,
+        "gasto_base": base,
+        "projetado_fim": projetado,
+        "pct_projetado": (projetado / teto) if teto else None,
+        "estoura": projetado > teto,
+        "fim": lf["fim"].isoformat() if isinstance(lf["fim"], date) else str(lf["fim"]),
     }
 
 
-def liferay_resumo(ref: date | None = None) -> dict | None:
-    """Dados do banner do patrocínio Liferay no painel. Relevante só enquanto a
-    campanha roda (o mês de encerramento, 11/2026). Fora disso retorna None."""
+def liferay_resumo(ref: date | None = None, dados: dict | None = None) -> dict | None:
+    """Dados do banner do patrocínio Liferay no painel. Relevante só no mês de
+    encerramento da campanha (o mês de `fim`). Fora disso retorna None."""
+    dados = dados or carregar()
+    lf = dados["liferay"]
+    fim = lf["fim"] if isinstance(lf["fim"], date) else date.fromisoformat(str(lf["fim"]))
     ref = ref or date.today()
-    if not (ref.year == LIFERAY_FIM.year and ref.month == LIFERAY_FIM.month):
+    if not (ref.year == fim.year and ref.month == fim.month):
         return None
-    proj = liferay_projecao()
+    proj = liferay_projecao(dados)
+    base = proj["gasto_base"]
+    teto = lf["teto"]
     return {
-        "teto": LIFERAY_TETO_TOTAL,
-        "gasto_base": LIFERAY_GASTO_BASE,
-        "base_data": LIFERAY_BASE_DATA.strftime("%d/%m"),
-        "restante": round(LIFERAY_TETO_TOTAL - LIFERAY_GASTO_BASE, 2),
+        "teto": teto,
+        "gasto_base": base,
+        "base_data": _fmt_data(lf["base_data"]),
+        "restante": round(teto - base, 2),
         "projetado_fim": proj["projetado_fim"],
-        "pct_base": LIFERAY_GASTO_BASE / LIFERAY_TETO_TOTAL,
+        "pct_base": (base / teto) if teto else None,
         "pct_projetado": proj["pct_projetado"],
-        "fim": LIFERAY_FIM.strftime("%d/%m"),
+        "fim": _fmt_data(fim),
         "estoura": proj["estoura"],
     }
+
+
+def tetos(dados: dict | None = None) -> dict:
+    """Tetos mensais {AAAA-MM: valor} do plano."""
+    return dict((dados or carregar()).get("tetos", {}))
+
+
+def montar_contexto(dados: dict) -> str:
+    """Renderiza o bloco de CONTEXTO (texto autoritativo) a partir dos dados do plano."""
+    linhas = [_REGRAS, "", "CONJUNTOS DE ANÚNCIOS (estado atual — nomes/códigos exatos do Campaign Manager):"]
+    for c in dados["conjuntos"]:
+        vig = ""
+        if c.get("inicio") or c.get("fim"):
+            vig = f" [vigência {c.get('inicio') or '...'}–{c.get('fim') or '...'}]"
+        verba = f"R$ {c['verba_dia']:.0f}/dia" if c.get("verba_dia") else "sem verba ativa"
+        obs = f" — {c['obs']}" if c.get("obs") else ""
+        linhas.append(
+            f"- {c['nome']} (cód. {c['codigo']} — tipo: {c['tipo']}; status: {c['status']}; {verba}){vig}{obs}"
+        )
+
+    lf = dados["liferay"]
+    proj = liferay_projecao(dados)
+    linhas += [
+        "",
+        "LIFERAY (patrocínio 50/50 — a Vertigo paga tudo e a Liferay reembolsa 50%):",
+        f"- Teto TOTAL do patrocínio: {_fmt_brl(lf['teto'])} (R$ 3.600 de cada lado), somando TUDO da Liferay.",
+        f"- A campanha de MARCA antiga encerrou com gasto final de {_fmt_brl(lf['antiga_final'])} (fixo, sem reativação).",
+        f"- A campanha NOVA de leads tem trava total de {_fmt_brl(lf['nova_trava'])}; gasto até "
+        f"{_fmt_data(lf['base_data'])} = {_fmt_brl(lf['nova_gasto'])}.",
+        f"- Gasto Liferay acumulado (bruto) até {_fmt_data(lf['base_data'])}: {_fmt_brl(proj['gasto_base'])}. "
+        f"Projeção até {_fmt_data(lf['fim'])}: no MÁXIMO {_fmt_brl(proj['projetado_fim'])} "
+        f"({(proj['pct_projetado'] or 0) * 100:.0f}% do teto; {'ESTOURA' if proj['estoura'] else 'não estoura'}). "
+        f"Só alerte se o combinado projetar passar do teto.",
+    ]
+
+    if dados.get("tetos"):
+        tet = "; ".join(f"{m} = {_fmt_brl(v)}" for m, v in sorted(dados["tetos"].items()))
+        linhas += ["", f"TETOS MENSAIS DE REFERÊNCIA (já com Liferay a 50% + inglês): {tet}."]
+
+    if dados.get("observacoes"):
+        linhas += ["", "OBSERVAÇÕES / MUDANÇAS (considerar conforme a data do período do relatório):"]
+        for o in dados["observacoes"]:
+            d = o.get("data")
+            prefixo = f"{d}: " if d and d not in ("plano", "—", "") else ""
+            linhas.append(f"- {prefixo}{o.get('texto', '')}")
+
+    return "\n\n" + "\n".join(linhas) + "\n"
+
+
+# ----------------------------------------------------------------------------
+# Carregamento com cache (planilha -> fallback). Cache por processo com TTL curto,
+# para o painel/chat não baterem na planilha a cada requisição.
+# ----------------------------------------------------------------------------
+_CACHE: dict = {"dados": None, "ts": 0.0, "fonte": "padrão"}
+_TTL = 600  # segundos
+
+
+def carregar(force: bool = False) -> dict:
+    """Dados do plano: da planilha (PLANO_SHEET_ID) se configurada e legível,
+    senão o DADOS_PADRAO (plano de hoje). Resultado cacheado por `_TTL`s."""
+    agora = time()
+    if not force and _CACHE["dados"] is not None and (agora - _CACHE["ts"]) < _TTL:
+        return _CACHE["dados"]
+    dados, fonte = DADOS_PADRAO, "padrão"
+    try:
+        from . import config
+        if getattr(config, "PLANO_SHEET_ID", ""):
+            from . import plano_sheet
+            lido = plano_sheet.ler(config.PLANO_SHEET_ID)
+            if lido and lido.get("conjuntos"):
+                dados, fonte = lido, "planilha"
+    except Exception as exc:  # qualquer falha -> fallback seguro
+        print(f"  aviso: não li o plano da planilha, usando o padrão do código: {exc}")
+    _CACHE.update(dados=dados, ts=agora, fonte=fonte)
+    return dados
+
+
+def fonte() -> str:
+    """'planilha' ou 'padrão' — de onde veio o plano carregado por último."""
+    return _CACHE.get("fonte", "padrão")
+
+
+def contexto() -> str:
+    """Bloco de CONTEXTO (texto autoritativo) com os dados atuais do plano."""
+    return montar_contexto(carregar())

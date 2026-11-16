@@ -18,6 +18,16 @@ LINKEDIN_ACCOUNT_ID = os.getenv("LINKEDIN_ACCOUNT_ID", "")
 GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "")
 
+# Planilha EDITÁVEL do plano de mídia (Júlia/Vitor editam; o agente lê). Enquanto
+# vazia, o agente usa o plano padrão do código (src/plano.py). Ver também
+# PLANO_EDITORS (e-mails que recebem acesso de edição na criação da planilha) e
+# PLANO_CHANGE_RECIPIENTS (quem recebe o e-mail de aviso quando o plano muda).
+PLANO_SHEET_ID = os.getenv("PLANO_SHEET_ID", "")
+PLANO_EDITORS = [e.strip() for e in os.getenv("PLANO_EDITORS", "").split(",") if e.strip()]
+PLANO_CHANGE_RECIPIENTS = [e.strip() for e in os.getenv("PLANO_CHANGE_RECIPIENTS", "").split(",") if e.strip()]
+# Pasta do Drive onde criar a planilha do plano (padrão: pasta do projeto).
+PLANO_FOLDER_ID = os.getenv("PLANO_FOLDER_ID", "1zLFt46fWMBXZ5DihsDzB_bENF1NP3Qlt")
+
 # URL pública do painel/relatório (para links nos e-mails)
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://midiapaga-api.vtgdev.net").rstrip("/")
 
