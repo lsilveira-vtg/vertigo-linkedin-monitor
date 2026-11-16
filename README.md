@@ -24,6 +24,19 @@ LinkedIn Marketing API
 
 > O agente é **consultivo**: recomenda ações, mas **não executa** nada no LinkedIn (a decisão é sempre humana).
 
+### Deploy, gate e rollback
+
+- **Deploy automático:** todo push na `main` publica em produção (SSH na EC2 + `docker compose up --build`).
+- **Gate de qualidade (job `lint`):** antes do deploy, o CI compila todo o código (`compileall`). Se houver erro de sintaxe, o deploy **não roda** e a produção fica intacta. O gate pega erro de código — **não** pega "número errado na verba".
+- **Rollback (voltar o último deploy):** se um deploy quebrar algo, reverter o último commit e empurrar republica o estado anterior em ~2 min:
+
+  ```bash
+  git revert --no-edit HEAD    # desfaz o último commit num commit novo
+  git push origin main         # o deploy-bot republica a versão anterior
+  ```
+
+  Para voltar mais de um commit, use `git revert --no-edit HEAD~2..HEAD` (os 2 últimos). O histórico é preservado (nada é apagado).
+
 ---
 
 ## Acesso do time

@@ -11,6 +11,7 @@
 stages:
   - collect
   - report
+  - test
   - deploy
 
 .python_base:
@@ -98,9 +99,24 @@ testar_vtglink:
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: manual
 
+# GATE DE QUALIDADE: compila TODO o código antes de qualquer deploy. Se algum
+# arquivo tiver erro de sintaxe, este job falha e o deploy-bot (que depende dele
+# via needs) NÃO roda — a produção continua intacta. Só compila, não executa nem
+# precisa de credenciais, então roda em segundos sem instalar dependências.
+lint:
+  extends: .python_base
+  stage: test
+  needs: []
+  before_script: []
+  script:
+    - python -m compileall -q src jobs api scripts
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
 deploy-bot:
   stage: deploy
-  needs: []
+  needs: ["lint"]        # só deploya se o gate (lint) passar — protege a produção
   image:
     name: alpine:3.20
   tags:
