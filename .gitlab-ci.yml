@@ -89,7 +89,9 @@ popular_plano_sheet:
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: manual
 
-# CPL histórico (12 meses) por campanha — imprime no log, não altera nada.
+# CPL histórico (12 meses) por campanha. Imprime no log e, se CPL_HIST_SHEET_ID
+# estiver configurado, reescreve a planilha separada do CPL histórico (pra não
+# ficar desatualizada). Roda no agendamento SEMANAL (junto do report) e manual.
 cpl_historico:
   extends: .python_base
   stage: report
@@ -97,6 +99,7 @@ cpl_historico:
   script:
     - python scripts/cpl_historico.py
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_JOB == "weekly"'
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: manual
 

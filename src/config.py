@@ -18,6 +18,11 @@ LINKEDIN_ACCOUNT_ID = os.getenv("LINKEDIN_ACCOUNT_ID", "")
 GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "")
 
+# Planilha SEPARADA do CPL histórico (12 meses) por campanha. Se configurada e
+# compartilhada (Editor) com a conta de serviço, o job cpl_historico reescreve ela
+# com dados frescos (roda semanalmente). Vazia = o job só imprime no log.
+CPL_HIST_SHEET_ID = os.getenv("CPL_HIST_SHEET_ID", "")
+
 # Planilha EDITÁVEL do plano de mídia (Júlia/Vitor editam; o agente lê). Enquanto
 # vazia, o agente usa o plano padrão do código (src/plano.py). Ver também
 # PLANO_EDITORS (e-mails que recebem acesso de edição na criação da planilha) e
