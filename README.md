@@ -44,7 +44,7 @@ O plano (verbas por conjunto, status, datas, tetos, Liferay, observações) vive
 - **Fonte:** `src/plano.py` → `plano.carregar()` lê a planilha (`PLANO_SHEET_ID`) via `src/plano_sheet.py`; se não estiver configurada/acessível, usa o plano padrão do próprio `plano.py` (então nada quebra antes da planilha existir).
 - **Uso no prompt:** `plano.contexto()` é injetado em runtime nas análises (painel, PDF e chat) — edições refletem sem reiniciar o processo (cache de 10 min).
 - **Aviso de mudança:** `src/plano_mudancas.py` compara o plano de hoje com o último (aba oculta `_estado`) e e-maila `PLANO_CHANGE_RECIPIENTS`.
-- **Criar a planilha (uma vez):** rodar o job manual `criar_plano_sheet` (precisa de `PLANO_EDITORS`); copiar o `PLANO_SHEET_ID` do log para CI/CD > Variables.
+- **Montar a planilha (uma vez):** a conta de serviço **não pode criar** arquivos (sem cota no Drive), então **crie uma planilha em branco** e compartilhe (Editor) com o e-mail da conta de serviço; cadastre o ID em `PLANO_SHEET_ID`; rode o job manual `popular_plano_sheet` (preenche as abas; não sobrescreve se já houver dados).
 - **Forçar na hora:** rodar o pipeline `coleta_diaria` manualmente (Run pipeline > botão do job) aplica mudanças no mesmo dia, sem esperar as 06h.
 - **Variáveis:** `PLANO_SHEET_ID`, `PLANO_EDITORS`, `PLANO_CHANGE_RECIPIENTS`, `PLANO_FOLDER_ID`.
 - **Nota:** a classificação de tipo que entra no CPL (leads/tráfego/marca) continua em `src/report_builder.py` (por código do conjunto); o `tipo` da planilha é descritivo para a análise.
