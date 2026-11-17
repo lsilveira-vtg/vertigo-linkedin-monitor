@@ -177,6 +177,15 @@ deploy-bot:
       set -e
       cd /home/ubuntu/vertigo-linkedin-monitor
       git pull --ff-only
+      if [ -n '${PLANO_SHEET_ID}' ]; then
+        touch .env
+        if grep -q '^PLANO_SHEET_ID=' .env; then
+          sed -i 's|^PLANO_SHEET_ID=.*|PLANO_SHEET_ID=${PLANO_SHEET_ID}|' .env
+        else
+          echo 'PLANO_SHEET_ID=${PLANO_SHEET_ID}' >> .env
+        fi
+        echo 'PLANO_SHEET_ID sincronizado no .env da EC2 (chat ao vivo lê a planilha)'
+      fi
       docker compose up -d --build --wait --wait-timeout 180
       docker image prune -f"
 
